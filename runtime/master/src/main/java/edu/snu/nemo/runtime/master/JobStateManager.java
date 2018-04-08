@@ -228,7 +228,6 @@ public final class JobStateManager {
       metric.put("FromState", newState);
       beginMeasurement(stageId, metric);
       LOG.info("log: {} start at {}", stageId, System.currentTimeMillis());
-  
       // if there exists a mapping, this state change is from a failed_recoverable stage,
       // and there may be task groups that do not need to be re-executed.
       if (!stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
@@ -245,7 +244,6 @@ public final class JobStateManager {
     } else if (newState == StageState.State.COMPLETE) {
       metric.put("ToState", newState);
       endMeasurement(stageId, metric);
-  
       currentJobStageIds.remove(stageId);
       if (currentJobStageIds.isEmpty()) {
         onJobStateChanged(JobState.State.COMPLETE);

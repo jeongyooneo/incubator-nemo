@@ -64,9 +64,11 @@ public final class MapReduceSkew {
         .apply(MapElements.via(new SimpleFunction<String, KV<String, String>>() {
           @Override
           public KV<String, String> apply(final String line) {
-            final String[] words = line.split(",");
-            String key = words[0].substring(1);
-            String value = words[1];
+            final String[] words = line.split(" +");
+            //String key = words[0].substring(1);
+            //String value = words[1];
+            String key = words[0] + "#" + words[1];
+            String value = randomString(50);
             return KV.of(key, value);
           }
         }))
@@ -75,14 +77,11 @@ public final class MapReduceSkew {
               @Override
               public String apply(final KV<String, Iterable<String>> kv) {
                 final String key = kv.getKey();
-                //final List<String> value = new ArrayList<>();
-                // kv.getValue().forEach(value::add);
                 List value = Lists.newArrayList(kv.getValue());
                 // val (lower, upper) = s.sortWith((l, r) => l < r).splitAt(s.size / 2)
                 Collections.sort(value);
-                final int size = value.size();
-                LOG.info("key {} value {}", key, value.get(size / 2));
-                return key + "," + value.get(size / 2);
+                // LOG.info("key {} value {}", key, value.get(value.size() / 2));
+                return key + ", " + value.get(value.size() / 2);
               }
             }));
     GenericSourceSink.write(result, outputFilePath);
@@ -91,17 +90,17 @@ public final class MapReduceSkew {
     LOG.info("*******END*******");
     LOG.info("JCT(ms): " + (System.currentTimeMillis() - start));
   }
-  
-  String randomString(final int length) {
+
+  public static String randomString(final int length) {
     Random r = new Random(); // perhaps make it a class variable so you don't make a new one every time
     StringBuilder sb = new StringBuilder();
-    for(int i = 0; i < length; i++) {
-      char c = (char)(r.nextInt((int)(Character.MAX_VALUE)));
+    for (int i = 0; i < length; i++) {
+      char c = (char) (r.nextInt((int) (Character.MAX_VALUE)));
       sb.append(c);
     }
     return sb.toString();
   }
-  
+
   /**
    * Assign synthetic skewed keys.
    */
