@@ -121,11 +121,11 @@ public final class SchedulerRunner {
         int numScheduledTaskGroups = 0;
         for (final ScheduledTaskGroup schedulableTaskGroup : schedulableTaskGroups) {
           final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
-          //LOG.debug("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
+          LOG.debug("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
           if (isScheduled) {
-            //LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
+            LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
             pendingTaskGroupQueue.remove(schedulableTaskGroup.getTaskGroupId());
             numScheduledTaskGroups++;
           } else {
@@ -133,8 +133,8 @@ public final class SchedulerRunner {
           }
         }
 
-        //LOG.debug("Examined {} TaskGroups, scheduled {} TaskGroups",
-        //   schedulableTaskGroups.size(), numScheduledTaskGroups);
+        LOG.debug("Examined {} TaskGroups, scheduled {} TaskGroups",
+           schedulableTaskGroups.size(), numScheduledTaskGroups);
         if (schedulableTaskGroups.size() == numScheduledTaskGroups) {
           // Scheduled all TaskGroups in the stage
           // Immediately run next iteration to check whether there is another schedulable stage

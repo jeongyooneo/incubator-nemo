@@ -20,6 +20,7 @@ import edu.snu.nemo.common.exception.DynamicOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
@@ -29,7 +30,7 @@ import java.util.*;
  */
 public final class MetricCollectionBarrierVertex<T> extends IRVertex {
   // Partition ID to Size data
-  private T metricData;
+  private AtomicReference<T> metricData;
   private final List<String> blockIds;
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
@@ -39,7 +40,7 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
    * Constructor for dynamic optimization vertex.
    */
   public MetricCollectionBarrierVertex() {
-    this.metricData = null;
+    this.metricData = new AtomicReference<>(null);
     this.blockIds = new ArrayList<>();
     this.dagSnapshot = null;
   }
@@ -76,7 +77,7 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
    * @param metric the block size information of the partition data.
    */
   public void updateMetricData(final T metric) {
-    metricData = metric;
+    metricData.getAndSet(metric);
   }
 
   /**
@@ -84,7 +85,7 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
    * @return the accumulated metric data.
    */
   public T getMetricData() {
-    return metricData;
+    return metricData.get();
   }
 
   public void addBlockId(final String blockId) {

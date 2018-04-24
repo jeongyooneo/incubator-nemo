@@ -38,8 +38,8 @@ public final class MapReduceITCase {
   private static ArgBuilder builder = new ArgBuilder();
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "sample_input_mr_skew";
-  private static final String outputFileName = "sample_output_mr_skew";
+  private static final String inputFileName = "sample_input_caida";
+  private static final String outputFileName = "sample_output_caida";
   private static final String testResourceFileName = "test_output_mr";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
@@ -108,7 +108,7 @@ public final class MapReduceITCase {
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
-        .addUserMain(MapReduceSkew.class.getCanonicalName())
+        .addUserMain(MapReduceSkewCaida.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
         .build());

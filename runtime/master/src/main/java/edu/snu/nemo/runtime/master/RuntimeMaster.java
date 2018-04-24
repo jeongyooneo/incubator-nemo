@@ -69,13 +69,14 @@ public final class RuntimeMaster {
   private static final int DAG_LOGGING_PERIOD = 3000;
 
   private final ExecutorService runtimeMasterThread;
-
+  private final ExecutorService metricAggregationService;
+  private MetricCollectionBarrierVertex<Map<Integer, Long>> metricCollectionBarrierVertex;
+  private final ConcurrentHashMap<Integer, Long> aggregatedMetricData;
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
   private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
-  private final Map<Integer, Long> aggregatedMetricData;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
 
@@ -97,6 +98,9 @@ public final class RuntimeMaster {
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.runtimeMasterThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster"));
+    this.metricAggregationService = Executors.newFixedThreadPool(10);
+    this.metricCollectionBarrierVertex = null;
+    this.aggregatedMetricData = new ConcurrentHashMap<>();
     this.scheduler = scheduler;
     this.containerManager = containerManager;
     this.blockManagerMaster = blockManagerMaster;
@@ -108,7 +112,6 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.aggregatedMetricData = new HashMap<>();
   }
 
   /**
@@ -308,21 +311,30 @@ public final class RuntimeMaster {
   private void accumulateBarrierMetric(final List<ControlMessage.PartitionSizeEntry> partitionSizeInfo,
                                        final String srcVertexId,
                                        final String blockId) {
-    final IRVertex vertexToSendMetricDataTo = irVertices.stream()
-        .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
-        .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
-
-    // For each hash range index, we aggregate the metric data.
-    partitionSizeInfo.forEach(partitionSizeEntry -> {
-      final int key = partitionSizeEntry.getKey();
-      final long size = partitionSizeEntry.getSize();
-      if (aggregatedMetricData.containsKey(key)) {
-        aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
-      } else {
-        aggregatedMetricData.put(key, size);
+    if (metricCollectionBarrierVertex == null) {
+      final IRVertex vertexToSendMetricDataTo = irVertices.stream()
+          .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
+          .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
+      metricCollectionBarrierVertex = (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
+    }
+    metricCollectionBarrierVertex.addBlockId(blockId);
+    metricAggregationService.submit(new Runnable() {
+      @Override
+      public void run() {
+        // For each hash range index, we aggregate the metric data.
+        partitionSizeInfo.forEach(partitionSizeEntry -> {
+          final int key = partitionSizeEntry.getKey();
+          final long size = partitionSizeEntry.getSize();
+          if (aggregatedMetricData.containsKey(key)) {
+            aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
+          } else {
+            aggregatedMetricData.put(key, size);
+          }
+        });
+        metricCollectionBarrierVertex.updateMetricData(aggregatedMetricData);
       }
     });
-
+    /*
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
       final MetricCollectionBarrierVertex<Map<Integer, Long>> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
@@ -331,6 +343,7 @@ public final class RuntimeMaster {
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }
+    */
   }
 
   // TODO #164: Cleanup Protobuf Usage

@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Dynamic optimization pass for handling data skew.
@@ -78,13 +77,16 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
         new RuntimeException("optimization edges are empty")).getDst().getTaskGroupIds().size();
 
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateHashRanges(metricData.right(), taskGroupListSize);
+    final Map<Integer, Pair<KeyRange, Boolean>> keyRanges =
+        calculateHashRanges(metricData.right(), taskGroupListSize);
 
     // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       // Update the information.
-      final List<KeyRange> taskGroupIdxToHashRange = new ArrayList<>();
-      IntStream.range(0, taskGroupListSize).forEach(i -> taskGroupIdxToHashRange.add(keyRanges.get(i)));
+      final List<Pair<KeyRange, Boolean>> taskGroupIdxToHashRange = new ArrayList<>();
+      for (int i = 0; i < taskGroupListSize; i++) {
+        taskGroupIdxToHashRange.add(keyRanges.get(i));
+      }
       optimizationEdge.setTaskGroupIdxToKeyRange(taskGroupIdxToHashRange);
     });
 
@@ -99,7 +101,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
    * @return the list of key ranges calculated.
    */
   @VisibleForTesting
-  public List<KeyRange> calculateHashRanges(final Map<Integer, Long> aggregatedMetricDataMap,
+  public Map<Integer, Pair<KeyRange, Boolean>> calculateHashRanges(final Map<Integer, Long> aggregatedMetricDataMap,
                                             final Integer taskGroupListSize) {
     // NOTE: aggregatedMetricDataMap is made up of a map of (hash value, blockSize).
     // Get the max hash value.
@@ -107,6 +109,17 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
             .max(Integer::compareTo)
             .orElseThrow(() -> new DynamicOptimizationException("Cannot find max hash value among blocks."));
 
+    List<Map.Entry<Integer, Long>> sortedMetricDataMap = aggregatedMetricDataMap.entrySet().stream()
+        .sorted((entry1, entry2) -> entry2.getValue().compareTo(entry1.getValue()))
+        .collect(Collectors.toList());
+  
+    List<Integer> hotHashes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      hotHashes.add(sortedMetricDataMap.get(i).getKey());
+      LOG.info("HotHash: Hash {} Size {}", sortedMetricDataMap.get(i).getKey(),
+          sortedMetricDataMap.get(i).getValue());
+    }
+    
     // Do the optimization using the information derived above.
     final Long totalSize = aggregatedMetricDataMap.values().stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTaskGroup = totalSize / taskGroupListSize; // and derive the ideal size per task group
@@ -114,10 +127,11 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
         idealSizePerTaskGroup, totalSize, taskGroupListSize);
 
     // find HashRanges to apply (for each blocks of each block).
-    final List<KeyRange> keyRanges = new ArrayList<>(taskGroupListSize);
+    final Map<Integer, Pair<KeyRange, Boolean>> keyRanges = new HashMap<>(taskGroupListSize);
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
     Long currentAccumulatedSize = aggregatedMetricDataMap.getOrDefault(startingHashValue, 0L);
+    Long prevAccumulatedSize = 0L;
     for (int i = 1; i <= taskGroupListSize; i++) {
       if (i != taskGroupListSize) {
         final Long idealAccumulatedSize = idealSizePerTaskGroup * i; // where we should end
@@ -137,11 +151,32 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
           currentAccumulatedSize -= aggregatedMetricDataMap.getOrDefault(finishingHashValue, 0L);
         }
 
+        boolean isHotHash = false;
+        for (int h = startingHashValue; h < finishingHashValue; h++) {
+          if (hotHashes.contains(h)) {
+            isHotHash = true;
+            break;
+          }
+        }
+        
+        keyRanges.put(i - 1, Pair.of(HashRange.of(startingHashValue, finishingHashValue), isHotHash));
         // assign appropriately
-        keyRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue));
+        LOG.info("KeyRange {}~{}, Size {}, isHotHash {}", startingHashValue, finishingHashValue,
+            currentAccumulatedSize - prevAccumulatedSize, isHotHash);
+        prevAccumulatedSize = currentAccumulatedSize;
         startingHashValue = finishingHashValue;
       } else { // last one: we put the range of the rest.
-        keyRanges.add(i - 1, HashRange.of(startingHashValue, maxHashValue + 1));
+        boolean isHotHash = false;
+        for (int h = startingHashValue; h < maxHashValue + 1; h++) {
+          if (hotHashes.contains(h)) {
+            isHotHash = true;
+            break;
+          }
+        }
+        
+        keyRanges.put(i - 1, Pair.of(HashRange.of(startingHashValue, maxHashValue + 1), isHotHash));
+        LOG.info("KeyRange {}~{}, Size {}", startingHashValue, maxHashValue + 1,
+            currentAccumulatedSize - prevAccumulatedSize);
       }
     }
     return keyRanges;

@@ -17,6 +17,8 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -54,6 +56,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
    * This map allows the executor index computation of the RR scheduling.
    */
   private final Map<String, Integer> nextExecutorIndexByContainerType;
+  private final Map<String, Integer> executorIdToHeavyTaskGroupMap;
 
   @Inject
   @VisibleForTesting
@@ -62,15 +65,17 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     this.executorIdByContainerType = new HashMap<>();
     this.nextExecutorIndexByContainerType = new HashMap<>();
     initializeContainerTypeIfAbsent(ExecutorPlacementProperty.NONE); // Need this to avoid potential null errors
+    this.executorIdToHeavyTaskGroupMap = new HashMap<>();
   }
 
   @Override
   public boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup,
                                    final JobStateManager jobStateManager) {
+    LOG.info("Scheduling {} by RR...", scheduledTaskGroup.getTaskGroupId());
     final String containerType = scheduledTaskGroup.getContainerType();
     initializeContainerTypeIfAbsent(containerType);
 
-    Optional<String> executorId = selectExecutorByRR(containerType);
+    Optional<String> executorId = considerSkew(scheduledTaskGroup, containerType);
     if (!executorId.isPresent()) { // If there is no available executor to schedule this task group now,
       return false;
     } else {
@@ -134,7 +139,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       executorRegistry.setRepresenterAsCompleted(executorId);
     }
   }
-
+  
   /**
    * Sticks to the RR policy to select an executor for the next task group.
    * It checks the task groups running (as compared to each executor's capacity).
@@ -142,18 +147,19 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
    * @param containerType to select an executor for.
    * @return (optionally) the selected executor.
    */
-  private Optional<String> selectExecutorByRR(final String containerType) {
+  private Optional<String> selectExecutorByRR(final ScheduledTaskGroup scheduledTaskGroup,
+                                              final String containerType) {
     final List<String> candidateExecutorIds = (containerType.equals(ExecutorPlacementProperty.NONE))
         ? getAllContainers() // all containers
         : executorIdByContainerType.get(containerType); // containers of a particular type
-
+  
     if (candidateExecutorIds != null && !candidateExecutorIds.isEmpty()) {
       final int numExecutors = candidateExecutorIds.size();
       int nextExecutorIndex = nextExecutorIndexByContainerType.get(containerType);
       for (int i = 0; i < numExecutors; i++) {
         final int index = (nextExecutorIndex + i) % numExecutors;
         final String selectedExecutorId = candidateExecutorIds.get(index);
-
+      
         final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(selectedExecutorId);
         if (hasFreeSlot(executor)) {
           nextExecutorIndex = (index + 1) % numExecutors;
@@ -162,8 +168,47 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
         }
       }
     }
-
+  
     return Optional.empty();
+  }
+  
+  private Optional<String> considerSkew(final ScheduledTaskGroup scheduledTaskGroup,
+                                              final String containerType) {
+    // Check if the scheduledTaskGroup has hot key data
+    int scheduledTaskGroupIdx = scheduledTaskGroup.getTaskGroupIdx();
+    boolean isHotHash = false;
+    for (int i = 0; i < scheduledTaskGroup.getTaskGroupIncomingEdges().size(); i++) {
+      PhysicalStageEdge edge = scheduledTaskGroup.getTaskGroupIncomingEdges().get(i);
+      if (edge.getTaskGroupIdxToKeyRange().get(scheduledTaskGroupIdx).right()) {
+        isHotHash = true;
+        break;
+      }
+    }
+    
+    if (isHotHash) {
+      final List<String> candidateExecutorIds = (containerType.equals(ExecutorPlacementProperty.NONE))
+          ? getAllContainers() // all containers
+          : executorIdByContainerType.get(containerType); // containers of a particular type
+  
+      Set<String> heavyExecutorIds = executorIdToHeavyTaskGroupMap.keySet();
+      List<String> lightExecutorIds = candidateExecutorIds.stream()
+          .filter(executor -> !heavyExecutorIds.contains(executor))
+          .collect(Collectors.toList());
+  
+      if (lightExecutorIds != null && !lightExecutorIds.isEmpty()) {
+        for (int i = 0; i < lightExecutorIds.size(); i++) {
+          final String selectedExecutorId = lightExecutorIds.get(i);
+          final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(selectedExecutorId);
+          if (hasFreeSlot(executor)) {
+            executorIdToHeavyTaskGroupMap.put(selectedExecutorId, scheduledTaskGroupIdx);
+            LOG.info("Hot Hash: Executor {} TaskGroup {}", selectedExecutorId, scheduledTaskGroupIdx);
+            return Optional.of(selectedExecutorId);
+          }
+        }
+      }
+    }
+    
+    return selectExecutorByRR(scheduledTaskGroup, containerType);
   }
 
   /**

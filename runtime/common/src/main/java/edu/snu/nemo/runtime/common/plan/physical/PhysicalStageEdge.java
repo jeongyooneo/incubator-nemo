@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.common.plan.physical;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -44,7 +45,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   /**
    * The list between the task group idx and key range to read.
    */
-  private List<KeyRange> taskGroupIdxToKeyRange;
+  private List<Pair<KeyRange, Boolean>> taskGroupIdxToKeyRange;
 
   /**
    * Constructor.
@@ -71,7 +72,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     // Initialize the key range of each dst task.
     this.taskGroupIdxToKeyRange = new ArrayList<>();
     for (int taskIdx = 0; taskIdx < dstStage.getTaskGroupIds().size(); taskIdx++) {
-      taskGroupIdxToKeyRange.add(HashRange.of(taskIdx, taskIdx + 1));
+      taskGroupIdxToKeyRange.add(Pair.of(HashRange.of(taskIdx, taskIdx + 1), false));
     }
   }
 
@@ -104,7 +105,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   /**
    * @return the list between the task group idx and key range to read.
    */
-  public List<KeyRange> getTaskGroupIdxToKeyRange() {
+  public List<Pair<KeyRange, Boolean>> getTaskGroupIdxToKeyRange() {
     return taskGroupIdxToKeyRange;
   }
 
@@ -112,7 +113,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
    * Sets the task group idx to key range list.
    * @param taskGroupIdxToKeyRange the list to set.
    */
-  public void setTaskGroupIdxToKeyRange(final List<KeyRange> taskGroupIdxToKeyRange) {
+  public void setTaskGroupIdxToKeyRange(final List<Pair<KeyRange, Boolean>> taskGroupIdxToKeyRange) {
     this.taskGroupIdxToKeyRange = taskGroupIdxToKeyRange;
   }
 }

@@ -15,36 +15,39 @@
  */
 package edu.snu.nemo.examples.beam;
 
+import com.google.common.collect.Lists;
 import edu.snu.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import edu.snu.nemo.compiler.frontend.beam.NemoPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.lang3.StringUtils;
-import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Sample MapReduce application for skew experiment.
  */
-public final class MapReduceSkew {
+public final class MapReduceSkewCaida {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MapReduceSkew.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(MapReduceSkewCaida.class.getName());
   private static final String[] ALPHABET = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
       "m", "n", "o", "p", "q", "r", "s", "t", "u", "w", "x", "y", "z"};
-  
+  private final Random r;
   /**
    * Private Constructor.
    */
-  private MapReduceSkew() {
+  private MapReduceSkewCaida() {
+    r = new Random();
   }
 
   /**
@@ -66,9 +69,10 @@ public final class MapReduceSkew {
         .apply(MapElements.via(new SimpleFunction<String, KV<String, String>>() {
           @Override
           public KV<String, String> apply(final String line) {
-            final String[] words = line.split(" ");
-            String key = words[0];
-            String value = words[1];
+            final String[] splitKey = line.split(" +");
+            String key = splitKey[2];
+            final String[] splitValue = line.split("->");
+            String value = splitValue[1];
             return KV.of(key, value);
           }
         }))
