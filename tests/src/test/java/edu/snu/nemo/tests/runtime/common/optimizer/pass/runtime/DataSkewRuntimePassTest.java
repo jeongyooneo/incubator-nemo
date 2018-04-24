@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 
@@ -46,8 +47,12 @@ public class DataSkewRuntimePassTest {
   public void testDataSkewDynamicOptimizationPass() {
     final Integer taskGroupListSize = 5;
 
-    final List<KeyRange> keyRanges =
+    final Map<Integer, Pair<KeyRange, Boolean>> keyRangesWhole =
         new DataSkewRuntimePass().calculateHashRanges(testMetricData, taskGroupListSize);
+    
+    final List<KeyRange> keyRanges = keyRangesWhole.values().stream()
+        .map(entry -> entry.left())
+        .collect(Collectors.toList());
 
     assertEquals(0, keyRanges.get(0).rangeBeginInclusive());
     assertEquals(3, keyRanges.get(0).rangeEndExclusive());

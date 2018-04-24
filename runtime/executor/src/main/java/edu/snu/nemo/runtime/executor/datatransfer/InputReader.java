@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.exception.UnsupportedPartitionerException;
 import edu.snu.nemo.common.ir.edge.executionproperty.AsBytesProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
@@ -140,13 +141,14 @@ public final class InputReader extends DataTransfer {
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof PhysicalStageEdge);
-    final KeyRange hashRangeToRead =
+    final Pair<KeyRange, Boolean> hashRange =
         ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdxToKeyRange().get(dstTaskIndex);
-    if (hashRangeToRead == null) {
+    if (hashRange == null) {
       throw new BlockFetchException(
           new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
     }
 
+    KeyRange hashRangeToRead = hashRange.left();
     LOG.info("{} got KeyRange {}~{}", runtimeEdge.getId(),
         hashRangeToRead.rangeBeginInclusive(), hashRangeToRead.rangeEndExclusive());
 

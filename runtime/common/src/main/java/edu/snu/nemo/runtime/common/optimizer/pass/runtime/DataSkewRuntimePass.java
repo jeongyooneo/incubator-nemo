@@ -112,14 +112,14 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
     List<Map.Entry<Integer, Long>> sortedMetricDataMap = aggregatedMetricDataMap.entrySet().stream()
         .sorted((entry1, entry2) -> entry2.getValue().compareTo(entry1.getValue()))
         .collect(Collectors.toList());
-  
+
     List<Integer> hotHashes = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       hotHashes.add(sortedMetricDataMap.get(i).getKey());
       LOG.info("HotHash: Hash {} Size {}", sortedMetricDataMap.get(i).getKey(),
           sortedMetricDataMap.get(i).getValue());
     }
-    
+
     // Do the optimization using the information derived above.
     final Long totalSize = aggregatedMetricDataMap.values().stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTaskGroup = totalSize / taskGroupListSize; // and derive the ideal size per task group
@@ -158,7 +158,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
             break;
           }
         }
-        
+
         keyRanges.put(i - 1, Pair.of(HashRange.of(startingHashValue, finishingHashValue), isHotHash));
         // assign appropriately
         LOG.info("KeyRange {}~{}, Size {}, isHotHash {}", startingHashValue, finishingHashValue,
@@ -173,7 +173,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
             break;
           }
         }
-        
+
         keyRanges.put(i - 1, Pair.of(HashRange.of(startingHashValue, maxHashValue + 1), isHotHash));
         LOG.info("KeyRange {}~{}, Size {}", startingHashValue, maxHashValue + 1,
             currentAccumulatedSize - prevAccumulatedSize);
