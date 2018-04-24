@@ -129,6 +129,7 @@ public final class DataTransferTest {
     injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     final ContainerManager containerManager = injector.getInstance(ContainerManager.class);
+    final ExecutorRegistry executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
@@ -136,10 +137,10 @@ public final class DataTransferTest {
     final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(
         injector.getInstance(ExecutorRegistry.class));
     final PendingTaskGroupQueue taskGroupQueue = new SingleJobTaskGroupQueue();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue);
+    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue, executorRegistry);
     final Scheduler scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskGroupQueue, master,
-            pubSubEventHandler, updatePhysicalPlanEventHandler);
+            pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
     final AtomicInteger executorCount = new AtomicInteger(0);
 
     // Necessary for wiring up the message environments

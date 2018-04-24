@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -45,6 +46,7 @@ public final class SchedulerRunner {
   private final SchedulingPolicy schedulingPolicy;
   private final PendingTaskGroupQueue pendingTaskGroupQueue;
   private final ExecutorService schedulerThread;
+  private final ExecutorRegistry executorRegistry;
   private boolean initialJobScheduled;
   private boolean isTerminated;
   private final SignalQueueingCondition mustCheckSchedulingAvailabilityOrSchedulerTerminated
@@ -52,11 +54,13 @@ public final class SchedulerRunner {
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
-                         final PendingTaskGroupQueue pendingTaskGroupQueue) {
+                         final PendingTaskGroupQueue pendingTaskGroupQueue,
+                         final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.schedulingPolicy = schedulingPolicy;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
+    this.executorRegistry = executorRegistry;
     this.initialJobScheduled = false;
     this.isTerminated = false;
   }
@@ -92,6 +96,11 @@ public final class SchedulerRunner {
   }
 
   void terminate() {
+    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
+      final ExecutorRepresenter representer = executorRegistry.getRunningExecutorRepresenter(executorId);
+      representer.shutDown();
+      executorRegistry.setRepresenterAsCompleted(executorId);
+    }
     schedulingPolicy.terminate();
     isTerminated = true;
     mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
