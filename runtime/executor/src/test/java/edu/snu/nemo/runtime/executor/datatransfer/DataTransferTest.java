@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime.executor.datatransfer;
+package edu.snu.nemo.runtime.executor.datatransfer;
 
+import edu.snu.nemo.common.coder.IntCoder;
+import edu.snu.nemo.common.coder.PairCoder;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -28,7 +29,6 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -53,8 +53,6 @@ import edu.snu.nemo.runtime.master.RuntimeMaster;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.scheduler.*;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
@@ -81,8 +79,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
-import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.flatten;
-import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.getRangedNumList;
+import static edu.snu.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
+import static edu.snu.nemo.runtime.common.RuntimeTestUtil.flatten;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -107,7 +105,7 @@ public final class DataTransferTest {
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
-  private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
+  private static final Coder CODER = PairCoder.of(IntCoder.of(), IntCoder.of());
   private static final Tang TANG = Tang.Factory.getTang();
   private static final int HASH_RANGE_MULTIPLIER = 10;
 
@@ -406,9 +404,10 @@ public final class DataTransferTest {
     edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
     edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
     edgeProperties.put(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
-    final DuplicateEdgeGroupPropertyValue duplicateDataProperty = edgeProperties.get(ExecutionProperty.Key.DuplicateEdgeGroup);
-    duplicateDataProperty.setRepresentativeEdgeId(edgeId);
-    duplicateDataProperty.setGroupSize(2);
+    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty
+        = edgeProperties.get(DuplicateEdgeGroupProperty.class);
+    duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
+    duplicateDataProperty.get().setGroupSize(2);
 
     edgeProperties.put(DataStoreProperty.of(store));
     edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
@@ -524,8 +523,8 @@ public final class DataTransferTest {
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, CODER, new ExecutionPropertyMap(""));
-    serializerManagers.get(receiver).register(edgeId, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(sender).register(edgeId, CODER);
+    serializerManagers.get(receiver).register(edgeId, CODER);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
@@ -544,10 +543,10 @@ public final class DataTransferTest {
                                                  final String edgeId2,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, CODER, new ExecutionPropertyMap(""));
-    serializerManagers.get(receiver).register(edgeId, CODER, new ExecutionPropertyMap(""));
-    serializerManagers.get(sender).register(edgeId2, CODER, new ExecutionPropertyMap(""));
-    serializerManagers.get(receiver).register(edgeId2, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(sender).register(edgeId, CODER);
+    serializerManagers.get(receiver).register(edgeId, CODER);
+    serializerManagers.get(sender).register(edgeId2, CODER);
+    serializerManagers.get(receiver).register(edgeId2, CODER);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
