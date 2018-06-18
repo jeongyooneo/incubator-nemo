@@ -20,7 +20,7 @@ package edu.snu.nemo.runtime.common.eventhandler;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.RuntimeEvent;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
 /**
@@ -28,20 +28,20 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
  */
 public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final PhysicalPlan physicalPlan;
-  private final MetricCollectionBarrierVertex metricCollectionBarrierVertex;
+  private final AggregationBarrierVertex aggregationBarrierVertex;
   private final Pair<String, String> taskInfo;
 
   /**
    * Default constructor.
    * @param physicalPlan physical plan to be optimized.
-   * @param metricCollectionBarrierVertex metric collection barrier vertex to retrieve metric data from.
+   * @param aggregationBarrierVertex metric collection barrier vertex to retrieve metric data from.
    * @param taskInfo information of the task.
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
-                                  final MetricCollectionBarrierVertex metricCollectionBarrierVertex,
+                                  final AggregationBarrierVertex aggregationBarrierVertex,
                                   final Pair<String, String> taskInfo) {
     this.physicalPlan = physicalPlan;
-    this.metricCollectionBarrierVertex = metricCollectionBarrierVertex;
+    this.aggregationBarrierVertex = aggregationBarrierVertex;
     this.taskInfo = taskInfo;
   }
 
@@ -55,8 +55,8 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   /**
    * @return the metric collection barrier vertex for the dynamic optimization.
    */
-  public MetricCollectionBarrierVertex getMetricCollectionBarrierVertex() {
-    return this.metricCollectionBarrierVertex;
+  public AggregationBarrierVertex getAggregationBarrierVertex() {
+    return this.aggregationBarrierVertex;
   }
 
   /**

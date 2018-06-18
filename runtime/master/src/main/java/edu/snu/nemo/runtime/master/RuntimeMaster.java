@@ -16,10 +16,10 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -310,7 +310,7 @@ public final class RuntimeMaster {
   /**
    * Accumulates the metric data for a barrier vertex.
    * TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-   * TODO #513: Replace MetricCollectionBarrierVertex with a Customizable IRVertex.
+   * TODO #513: Replace AggregationBarrierVertex with a Customizable IRVertex.
    *
    * @param partitionSizeInfo the size of partitions in a block to accumulate.
    * @param srcVertexId       the ID of the source vertex.
@@ -334,11 +334,11 @@ public final class RuntimeMaster {
       }
     });
 
-    if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-      final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
-          (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
-      metricCollectionBarrierVertex.addBlockId(blockId);
-      metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
+    if (vertexToSendMetricDataTo instanceof AggregationBarrierVertex) {
+      final AggregationBarrierVertex<Integer, Long> aggregationBarrierVertex =
+          (AggregationBarrierVertex) vertexToSendMetricDataTo;
+      aggregationBarrierVertex.addBlockId(blockId);
+      aggregationBarrierVertex.setMetricData(aggregatedMetricData);
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }

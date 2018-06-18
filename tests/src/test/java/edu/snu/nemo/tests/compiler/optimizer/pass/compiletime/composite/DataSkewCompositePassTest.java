@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
@@ -74,7 +74,7 @@ public class DataSkewCompositePassTest {
   }
 
   /**
-   * Test for {@link DataSkewCompositePass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex}
+   * Test for {@link DataSkewCompositePass} with MR workload. It must insert a {@link AggregationBarrierVertex}
    * before each shuffle edge.
    * @throws Exception exception on the way.
    */
@@ -95,7 +95,7 @@ public class DataSkewCompositePassTest {
         .filter(irEdge -> DataCommunicationPatternProperty.Value.Shuffle
             .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
         .map(IREdge::getSrc)
-        .forEach(irVertex -> assertTrue(irVertex instanceof MetricCollectionBarrierVertex));
+        .forEach(irVertex -> assertTrue(irVertex instanceof AggregationBarrierVertex));
 
     processedDAG.getVertices().forEach(v -> processedDAG.getOutgoingEdgesOf(v).stream()
         .filter(e -> MetricCollectionProperty.Value.DataSkewRuntimePass

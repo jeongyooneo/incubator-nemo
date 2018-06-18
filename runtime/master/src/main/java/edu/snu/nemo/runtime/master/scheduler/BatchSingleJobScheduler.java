@@ -19,6 +19,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
@@ -26,7 +27,6 @@ import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.common.exception.*;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -494,19 +494,19 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     if (stageComplete) {
       // get optimization vertex from the task.
-      final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
+      final AggregationBarrierVertex aggregationBarrierVertex =
           getVertexDagById(taskId).getVertices().stream() // get vertex list
               .filter(irVertex -> irVertex.getId().equals(vertexPutOnHold)) // find it
-              .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
+              .filter(irVertex -> irVertex instanceof AggregationBarrierVertex)
               .distinct()
-              .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
+              .map(irVertex -> (AggregationBarrierVertex) irVertex) // convert types
               .findFirst().orElseThrow(() -> new RuntimeException(ON_HOLD.name() // get it
               + " called with failed task ids by some other task than "
-              + MetricCollectionBarrierVertex.class.getSimpleName()));
+              + AggregationBarrierVertex.class.getSimpleName()));
       // and we will use this vertex to perform metric collection and dynamic optimization.
 
       pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
-          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, Pair.of(executorId, taskId)));
+          new DynamicOptimizationEvent(physicalPlan, aggregationBarrierVertex, Pair.of(executorId, taskId)));
     } else {
       onTaskExecutionComplete(executorId, taskId, true);
     }

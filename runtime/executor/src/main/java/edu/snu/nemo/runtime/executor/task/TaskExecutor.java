@@ -185,9 +185,9 @@ public final class TaskExecutor {
     } else if (irVertex instanceof OperatorVertex) {
       final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
-    } else if (irVertex instanceof MetricCollectionBarrierVertex) {
+    } else if (irVertex instanceof AggregationBarrierVertex) {
       outputCollector.emit(dataElement);
-      setIRVertexPutOnHold((MetricCollectionBarrierVertex) irVertex);
+      setIRVertexPutOnHold((AggregationBarrierVertex) irVertex);
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
@@ -410,7 +410,7 @@ public final class TaskExecutor {
 
   ////////////////////////////////////////////// Misc
 
-  private void setIRVertexPutOnHold(final MetricCollectionBarrierVertex irVertex) {
+  private void setIRVertexPutOnHold(final AggregationBarrierVertex irVertex) {
     idOfVertexPutOnHold = irVertex.getId();
   }
 

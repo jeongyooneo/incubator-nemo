@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.common.optimizer;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
@@ -37,22 +37,22 @@ public final class RuntimeOptimizer {
   /**
    * Dynamic optimization method to process the dag with an appropriate pass, decided by the stats.
    * @param originalPlan original physical execution plan.
-   * @param metricCollectionBarrierVertex the vertex that collects metrics and chooses which optimization to perform.
+   * @param aggregationBarrierVertex the vertex that collects metrics and chooses which optimization to perform.
    * @return the newly updated optimized physical plan.
    */
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
-          final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
+          final AggregationBarrierVertex aggregationBarrierVertex) {
     final DynamicOptimizationProperty.Value dynamicOptimizationType =
-        metricCollectionBarrierVertex.getProperty(ExecutionProperty.Key.DynamicOptimizationType);
+        aggregationBarrierVertex.getProperty(ExecutionProperty.Key.DynamicOptimizationType);
 
     switch (dynamicOptimizationType) {
       case DataSkewRuntimePass:
         // Metric data for DataSkewRuntimePass is
         // a pair of blockIds and map of hashrange, partition size.
         final Pair<List<String>, Map<Integer, Long>> metricData =
-            Pair.of(metricCollectionBarrierVertex.getBlockIds(),
-                (Map<Integer, Long>) metricCollectionBarrierVertex.getMetricData());
+            Pair.of(aggregationBarrierVertex.getBlockIds(),
+                (Map<Integer, Long>) aggregationBarrierVertex.getMetricData());
         return new DataSkewRuntimePass().apply(originalPlan, metricData);
       default:
         throw new UnsupportedOperationException("Unknown runtime pass: " + dynamicOptimizationType);

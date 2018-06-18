@@ -17,14 +17,14 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies which optimization to perform on the MetricCollectionBarrierVertex.
+ * It specifies which optimization to perform on the AggregationBarrierVertex.
  */
 public final class DataSkewVertexPass extends AnnotatingPass {
   /**
@@ -38,7 +38,7 @@ public final class DataSkewVertexPass extends AnnotatingPass {
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(v -> {
       // we only care about metric collection barrier vertices.
-      if (v instanceof MetricCollectionBarrierVertex) {
+      if (v instanceof AggregationBarrierVertex) {
         v.setProperty(DynamicOptimizationProperty.of(DynamicOptimizationProperty.Value.DataSkewRuntimePass));
       }
     });

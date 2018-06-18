@@ -177,9 +177,9 @@ class NormalVertex:
             label += '\\n{}:{}'.format(transform_name, class_name)
         except:
             pass
-        if ('class' in self.properties and self.properties['class'] == 'MetricCollectionBarrierVertex'):
+        if ('class' in self.properties and self.properties['class'] == 'AggregationBarrierVertex'):
             shape = ', shape=box'
-            label += '\\nMetricCollectionBarrier'
+            label += '\\nAggregationBarrier'
         else:
             shape = ''
         dot = '{} [label="{}", color={}, style=filled, fillcolor="{}"{}];'.format(self.idx, label, color, stateToColor(self.state), shape)

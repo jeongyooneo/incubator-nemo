@@ -28,7 +28,7 @@ import java.util.*;
  * @param <K> type of the key of metric data.
  * @param <V> type of the value of metric data.
  */
-public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
+public final class AggregationBarrierVertex<K, V> extends IRVertex {
   // Metric data used for dynamic optimization.
   private Map<K, V> metricData;
   private final List<String> blockIds;
@@ -40,15 +40,15 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
   /**
    * Constructor for dynamic optimization vertex.
    */
-  public MetricCollectionBarrierVertex() {
+  public AggregationBarrierVertex() {
     this.metricData = null;
     this.blockIds = new ArrayList<>();
     this.dagSnapshot = null;
   }
 
   @Override
-  public MetricCollectionBarrierVertex getClone() {
-    final MetricCollectionBarrierVertex that = new MetricCollectionBarrierVertex();
+  public AggregationBarrierVertex getClone() {
+    final AggregationBarrierVertex that = new AggregationBarrierVertex();
     that.setDAGSnapshot(dagSnapshot);
     this.copyExecutionPropertiesTo(that);
     return that;
@@ -68,7 +68,7 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
    */
   public DAG<IRVertex, IREdge> getDAGSnapshot() {
     if (this.dagSnapshot == null) {
-      throw new DynamicOptimizationException("MetricCollectionBarrierVertex must have been set with a DAG.");
+      throw new DynamicOptimizationException("AggregationBarrierVertex must have been set with a DAG.");
     }
     return this.dagSnapshot;
   }

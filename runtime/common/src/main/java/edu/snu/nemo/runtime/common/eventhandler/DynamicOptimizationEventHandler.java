@@ -21,7 +21,7 @@ package edu.snu.nemo.runtime.common.eventhandler;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.runtime.common.optimizer.RuntimeOptimizer;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.reef.wake.impl.PubSubEventHandler;
@@ -51,13 +51,13 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
   @Override
   public void onNext(final DynamicOptimizationEvent dynamicOptimizationEvent) {
     final PhysicalPlan physicalPlan = dynamicOptimizationEvent.getPhysicalPlan();
-    final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-            dynamicOptimizationEvent.getMetricCollectionBarrierVertex();
+    final AggregationBarrierVertex aggregationBarrierVertex =
+            dynamicOptimizationEvent.getAggregationBarrierVertex();
 
     final Pair<String, String> taskInfo = dynamicOptimizationEvent.getTaskInfo();
 
     final PhysicalPlan newPlan = RuntimeOptimizer.dynamicOptimization(physicalPlan,
-        metricCollectionBarrierVertex);
+        aggregationBarrierVertex);
 
     pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(newPlan, taskInfo));
   }
