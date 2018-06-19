@@ -72,7 +72,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ./bin/run_external_app.sh \
     `pwd`/nemo_app/target/bd17f-1.0-SNAPSHOT.jar \
     -job_id mapreduce \
-    -executor_json `pwd`/examples/resources/sample_executor_resources.json \
+    -executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
     -user_main MapReduce \
     -user_args "`pwd`/mr_input_data `pwd`/nemo_output/output_data"
 ```
@@ -89,7 +89,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## MapReduce example
 ./bin/run_beam.sh \
 	-job_id mr_default \
-	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
 	-user_main edu.snu.nemo.examples.beam.WordCount \
 	-user_args "`pwd`/examples/resources/sample_input_wordcount `pwd`/examples/resources/sample_output_wordcount"
@@ -98,7 +98,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ./bin/run_beam.sh \
 	-deploy_mode yarn \
   	-job_id mr_pado \
-	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.WordCount \
   	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
   	-user_args "hdfs://v-m:9000/sample_input_wordcount hdfs://v-m:9000/sample_output_wordcount"
