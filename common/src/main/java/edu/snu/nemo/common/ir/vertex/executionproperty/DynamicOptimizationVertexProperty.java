@@ -20,12 +20,13 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 /**
  * DynamicOptimizationType ExecutionProperty.
  */
-public final class DynamicOptimizationProperty extends VertexExecutionProperty<DynamicOptimizationProperty.Value> {
+public final class DynamicOptimizationVertexProperty
+    extends VertexExecutionProperty<DynamicOptimizationVertexProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private DynamicOptimizationProperty(final Value value) {
+  private DynamicOptimizationVertexProperty(final Value value) {
     super(value);
   }
 
@@ -34,14 +35,14 @@ public final class DynamicOptimizationProperty extends VertexExecutionProperty<D
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static DynamicOptimizationProperty of(final Value value) {
-    return new DynamicOptimizationProperty(value);
+  public static DynamicOptimizationVertexProperty of(final Value value) {
+    return new DynamicOptimizationVertexProperty(value);
   }
 
   /**
    * Possible values of DynamicOptimization ExecutionProperty.
    */
   public enum Value {
-    DataSkewRuntimePass
+    RuntimeSkewHandling
   }
 }

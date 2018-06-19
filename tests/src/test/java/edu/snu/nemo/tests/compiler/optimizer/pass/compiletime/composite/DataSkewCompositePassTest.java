@@ -19,7 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DynamicOptimizationEdgeProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
@@ -99,8 +99,8 @@ public class DataSkewCompositePassTest {
         .forEach(irVertex -> assertTrue(irVertex instanceof AggregationBarrierVertex));
 
     processedDAG.getVertices().forEach(v -> processedDAG.getOutgoingEdgesOf(v).stream()
-        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-                  .equals(e.getPropertyValue(MetricCollectionProperty.class)))
+        .filter(e -> Optional.of(DynamicOptimizationEdgeProperty.Value.Repartitioning)
+                  .equals(e.getPropertyValue(DynamicOptimizationEdgeProperty.class)))
         .forEach(e -> assertEquals(PartitionerProperty.Value.DataSkewHashPartitioner,
             e.getPropertyValue(PartitionerProperty.class).get())));
   }

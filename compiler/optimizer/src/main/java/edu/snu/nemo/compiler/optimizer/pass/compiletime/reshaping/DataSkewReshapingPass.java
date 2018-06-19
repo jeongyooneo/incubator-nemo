@@ -29,12 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Pass to modify the DAG for a job to perform data skew.
- * It adds a {@link AggregationBarrierVertex} before Shuffle edges, to make a barrier before it,
- * and to use the metrics to repartition the skewed data.
- * NOTE: we currently put the DataSkewCompositePass at the end of the list for each policies, as it needs to take
- * a snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the
- * DAG at the end of each passes for metricCollectionVertices.
+ * Pass that adds an {@link AggregationBarrierVertex} before Shuffle edges.
  */
 public final class DataSkewReshapingPass extends ReshapingPass {
   /**
@@ -63,16 +58,16 @@ public final class DataSkewReshapingPass extends ReshapingPass {
           // we insert the metric collection vertex when we meet a shuffle edge
           if (DataCommunicationPatternProperty.Value.Shuffle
                 .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
-            // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
+            // We then insert the AggregationBarrierVertex between the vertex and incoming vertices.
             final IREdge newEdge = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
                 edge.getSrc(), aggregationBarrierVertex);
             newEdge.setProperty(CoderProperty.of(edge.getPropertyValue(CoderProperty.class).get()));
 
-            final IREdge edgeToGbK = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
+            final IREdge edgeToReducer = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
                 aggregationBarrierVertex, v, edge.isSideInput());
-            edge.copyExecutionPropertiesTo(edgeToGbK);
+            edge.copyExecutionPropertiesTo(edgeToReducer);
             builder.connectVertices(newEdge);
-            builder.connectVertices(edgeToGbK);
+            builder.connectVertices(edgeToReducer);
           } else {
             builder.connectVertices(edge);
           }

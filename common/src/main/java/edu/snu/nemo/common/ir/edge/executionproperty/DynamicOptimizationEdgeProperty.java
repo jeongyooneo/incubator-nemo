@@ -20,12 +20,13 @@ import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 /**
  * MetricCollection ExecutionProperty.
  */
-public final class MetricCollectionProperty extends EdgeExecutionProperty<MetricCollectionProperty.Value> {
+public final class DynamicOptimizationEdgeProperty
+    extends EdgeExecutionProperty<DynamicOptimizationEdgeProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private MetricCollectionProperty(final Value value) {
+  private DynamicOptimizationEdgeProperty(final Value value) {
     super(value);
   }
 
@@ -34,14 +35,14 @@ public final class MetricCollectionProperty extends EdgeExecutionProperty<Metric
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static MetricCollectionProperty of(final Value value) {
-    return new MetricCollectionProperty(value);
+  public static DynamicOptimizationEdgeProperty of(final Value value) {
+    return new DynamicOptimizationEdgeProperty(value);
   }
 
   /**
    * Possible values of MetricCollection ExecutionProperty.
    */
   public enum Value {
-    DataSkewRuntimePass
+    Repartitioning
   }
 }

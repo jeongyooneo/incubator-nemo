@@ -118,8 +118,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     final int multiplier = duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
 
-    final boolean isDataSizeMetricCollectionEdge = Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-        .equals(runtimeEdge.getPropertyValue(MetricCollectionProperty.class));
+    final boolean isDataSizeMetricCollectionEdge = Optional.of(DynamicOptimizationEdgeProperty.Value.Repartitioning)
+        .equals(runtimeEdge.getPropertyValue(DynamicOptimizationEdgeProperty.class));
     final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
     // Return the total size of the committed block.
     if (partitionSizeMap.isPresent()) {

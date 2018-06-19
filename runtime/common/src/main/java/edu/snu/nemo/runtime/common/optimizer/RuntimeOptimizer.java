@@ -17,8 +17,7 @@ package edu.snu.nemo.runtime.common.optimizer;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationVertexProperty;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
@@ -43,12 +42,12 @@ public final class RuntimeOptimizer {
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
           final AggregationBarrierVertex aggregationBarrierVertex) {
-    final DynamicOptimizationProperty.Value dynamicOptimizationType =
-        aggregationBarrierVertex.getProperty(ExecutionProperty.Key.DynamicOptimizationType);
+    final DynamicOptimizationVertexProperty.Value dynamicOptimizationType =
+        aggregationBarrierVertex.getPropertyValue(DynamicOptimizationVertexProperty.class).get();
 
     switch (dynamicOptimizationType) {
-      case DataSkewRuntimePass:
-        // Metric data for DataSkewRuntimePass is
+      case RuntimeSkewHandling:
+        // Metric data for Repartitioning is
         // a pair of blockIds and map of hashrange, partition size.
         final Pair<List<String>, Map<Integer, Long>> metricData =
             Pair.of(aggregationBarrierVertex.getBlockIds(),

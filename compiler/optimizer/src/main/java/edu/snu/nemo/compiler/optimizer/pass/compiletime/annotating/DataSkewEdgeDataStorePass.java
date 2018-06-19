@@ -23,8 +23,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies the incoming one-to-one edges to MetricCollectionVertices to have either MemoryStore or LocalFileStore
- * as its DataStore ExecutionProperty.
+ * It annotates the DataStoreProperty of incoming one-to-one edges of AggregationBarrierVertices as LocalFileStore.
  */
 public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
   /**
@@ -37,19 +36,10 @@ public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(v -> {
-      // we only care about metric collection barrier vertices.
       if (v instanceof AggregationBarrierVertex) {
-        // We use memory for just a single inEdge, to make use of locality of stages: {@link PhysicalPlanGenerator}.
-        final IREdge edgeToUseMemory = dag.getIncomingEdgesOf(v).stream().findFirst().orElseThrow(() ->
-            new RuntimeException("This AggregationBarrierVertex doesn't have any incoming edges: " + v.getId()));
-        dag.getIncomingEdgesOf(v).forEach(edge -> {
-          // we want it to be in the same stage
-          if (edge.equals(edgeToUseMemory)) {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-          } else {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-          }
-        });
+        // AggregationBarrierVertex itself forms a single stage.
+        dag.getIncomingEdgesOf(v).forEach(edge ->
+          edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
       }
     });
     return dag;

@@ -15,22 +15,20 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 
-import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.*;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.DataSkewReshapingPass;
 
 import java.util.Arrays;
 
 /**
- * Pass to reshape the DAG for data skew handling.
- * It adds an {@link AggregationBarrierVertex} after Shuffle edges
- * that does metric aggregation and acts as a barrier.
- * The metrics are used to key range-based shuffle re-partitioning.
+ * Pass to annotate and reshape the IRDAG for data skew handling.
+ * It adds an AggregationBarrierVertex after Shuffle edges that aggregates metric and acts as a barrier.
+ * The metrics are used in runtime skew handling, i.e. key range-based shuffle re-partitioning.
  *
  * NOTE: we currently put the DataSkewCompositePass at the end of the list for each policies,
  * as it needs to take a snapshot at the end of the pass.
  * This could be prevented by modifying other passes to take the snapshot of the DAG
- * at the end of each passes for metricCollectionVertices.
+ * at the end of each passes for AggregationCollectionVertices.
  */
 public final class DataSkewCompositePass extends CompositePass {
   /**
@@ -39,9 +37,9 @@ public final class DataSkewCompositePass extends CompositePass {
   public DataSkewCompositePass() {
     super(Arrays.asList(
         new DataSkewReshapingPass(),
-        new DataSkewVertexPass(),
+        new DataSkewVertexDynamicOptimizationPass(),
         new DataSkewEdgeDataStorePass(),
-        new DataSkewEdgeMetricCollectionPass(),
+        new DataSkewEdgeDynamicOptimizationPass(),
         new DataSkewEdgePartitionerPass()
     ));
   }

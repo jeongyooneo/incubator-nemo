@@ -17,24 +17,20 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-
-import java.util.Collections;
+import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationVertexProperty;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
- * which lets the edge to know what metric collection it should perform.
+ * It specifies which optimization to perform on the AggregationBarrierVertex.
  */
-public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
+public final class DataSkewVertexDynamicOptimizationPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public DataSkewEdgeMetricCollectionPass() {
-    super(MetricCollectionProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+  public DataSkewVertexDynamicOptimizationPass() {
+    super(DynamicOptimizationVertexProperty.class);
   }
 
   @Override
@@ -42,13 +38,8 @@ public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
     dag.topologicalDo(v -> {
       // we only care about metric collection barrier vertices.
       if (v instanceof AggregationBarrierVertex) {
-        dag.getOutgoingEdgesOf(v).forEach(edge -> {
-          // double checking.
-          if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-              .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
-            edge.setProperty(MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
-          }
-        });
+        v.setProperty(DynamicOptimizationVertexProperty
+            .of(DynamicOptimizationVertexProperty.Value.RuntimeSkewHandling));
       }
     });
     return dag;

@@ -17,28 +17,36 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DynamicOptimizationEdgeProperty;
+
+import java.util.Collections;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies which optimization to perform on the AggregationBarrierVertex.
+ * It annotates the outgoing Shuffle edges from AggregationBarrierVertices with Repartitioning ExecutionProperty
+ * to specify them as the target of runtime repartitioning.
  */
-public final class DataSkewVertexPass extends AnnotatingPass {
+public final class DataSkewEdgeDynamicOptimizationPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public DataSkewVertexPass() {
-    super(DynamicOptimizationProperty.class);
+  public DataSkewEdgeDynamicOptimizationPass() {
+    super(DynamicOptimizationEdgeProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(v -> {
-      // we only care about metric collection barrier vertices.
       if (v instanceof AggregationBarrierVertex) {
-        v.setProperty(DynamicOptimizationProperty.of(DynamicOptimizationProperty.Value.DataSkewRuntimePass));
+        dag.getOutgoingEdgesOf(v).forEach(edge -> {
+          if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
+              .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+            edge.setProperty(DynamicOptimizationEdgeProperty.of(DynamicOptimizationEdgeProperty.Value.Repartitioning));
+          }
+        });
       }
     });
     return dag;

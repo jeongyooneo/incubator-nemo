@@ -16,7 +16,7 @@
 package edu.snu.nemo.common.dag;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DynamicOptimizationEdgeProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
@@ -252,8 +252,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
         }));
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-                      .equals(e.getPropertyValue(MetricCollectionProperty.class)))
+        .filter(e -> Optional.of(DynamicOptimizationEdgeProperty.Value.Repartitioning)
+                      .equals(e.getPropertyValue(DynamicOptimizationEdgeProperty.class)))
         .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getPropertyValue(DataFlowModelProperty.class).get()))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "

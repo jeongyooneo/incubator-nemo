@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DynamicOptimizationEdgeProperty;
 import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
@@ -26,14 +26,14 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Pado pass for tagging edges with {@link PartitionerProperty}.
+ * Pass for annotating PartitionerProperty of AggregationBarrierVertices' outgoing edges as DataSkewHashPartitioner.
  */
 public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public DataSkewEdgePartitionerPass() {
-    super(PartitionerProperty.class, Collections.singleton(MetricCollectionProperty.class));
+    super(PartitionerProperty.class, Collections.singleton(DynamicOptimizationEdgeProperty.class));
   }
 
   @Override
@@ -42,9 +42,8 @@ public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
       if (vertex instanceof AggregationBarrierVertex) {
         final List<IREdge> outEdges = dag.getOutgoingEdgesOf(vertex);
         outEdges.forEach(edge -> {
-          // double checking.
-          if (MetricCollectionProperty.Value.DataSkewRuntimePass
-            .equals(edge.getPropertyValue(MetricCollectionProperty.class).get())) {
+          if (DynamicOptimizationEdgeProperty.Value.Repartitioning
+            .equals(edge.getPropertyValue(DynamicOptimizationEdgeProperty.class).get())) {
             edge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.DataSkewHashPartitioner));
           }
         });
