@@ -16,11 +16,9 @@
 package edu.snu.nemo.runtime.executor.data;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.coder.IntCoder;
-import edu.snu.nemo.common.coder.PairCoder;
+import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.common.data.KeyRange;
@@ -30,6 +28,7 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.nemo.runtime.executor.data.stores.*;
@@ -71,9 +70,11 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, SerializerManager.class})
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
-  private static final Coder CODER = PairCoder.of(IntCoder.of(), IntCoder.of());
-  private static final Serializer SERIALIZER = new Serializer(CODER,
-      Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Value.LZ4)));
+  private static final Serializer SERIALIZER = new Serializer(
+      PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of()),
+      PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of()),
+      Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Value.LZ4)),
+      Collections.singletonList(new DecompressionStreamChainer(CompressionProperty.Value.LZ4)));
   private static final SerializerManager serializerManager = mock(SerializerManager.class);
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
@@ -129,7 +130,7 @@ public final class BlockStoreTest {
       blockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
-          blockId, BlockState.State.SCHEDULED, null);
+          blockId, BlockState.State.IN_PROGRESS, null);
 
       // Create blocks for this block.
       final List<NonSerializedPartition<Integer>> partitionsForBlock = new ArrayList<>(NUM_READ_VERTICES);
@@ -150,7 +151,7 @@ public final class BlockStoreTest {
     concBlockId = RuntimeIdGenerator.generateBlockId(concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1);
     blockManagerMaster.initializeState(concBlockId, "unused");
     blockManagerMaster.onBlockStateChanged(
-        concBlockId, BlockState.State.SCHEDULED, null);
+        concBlockId, BlockState.State.IN_PROGRESS, null);
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(number -> concReadTaskIdList.add("conc_read_IR_vertex"));
     concBlockPartition = new NonSerializedPartition(0, getRangedNumList(0, CONC_READ_DATA_SIZE), -1, -1);
 
@@ -175,7 +176,7 @@ public final class BlockStoreTest {
       hashedBlockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
-          blockId, BlockState.State.SCHEDULED, null);
+          blockId, BlockState.State.IN_PROGRESS, null);
       final List<NonSerializedPartition<Integer>> hashedBlock = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
       IntStream.range(0, HASH_RANGE).forEach(hashValue ->
@@ -319,7 +320,7 @@ public final class BlockStoreTest {
               }
               block.commit();
               writerSideStore.writeBlock(block);
-              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED,
+              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
                   "Writer side of the shuffle edge");
               return true;
             } catch (final Exception e) {
@@ -413,7 +414,7 @@ public final class BlockStoreTest {
           block.commit();
           writerSideStore.writeBlock(block);
           blockManagerMaster.onBlockStateChanged(
-              concBlockId, BlockState.State.COMMITTED, "Writer side of the concurrent read edge");
+              concBlockId, BlockState.State.AVAILABLE, "Writer side of the concurrent read edge");
           return true;
         } catch (final Exception e) {
           e.printStackTrace();
@@ -501,7 +502,7 @@ public final class BlockStoreTest {
               }
               block.commit();
               writerSideStore.writeBlock(block);
-              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED,
+              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
                   "Writer side of the shuffle in hash range edge");
               return true;
             } catch (final Exception e) {
