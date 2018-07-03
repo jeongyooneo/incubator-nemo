@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.PartitionSizeAggregationBarrierVertex;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,7 +52,7 @@ public final class DataSkewReshapingPass extends ReshapingPass {
           DataCommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
         final AggregationBarrierVertex<Integer, Long> aggregationBarrierVertex
-            = new AggregationBarrierVertex<>();
+            = new PartitionSizeAggregationBarrierVertex();
         metricCollectionVertices.add(aggregationBarrierVertex);
         builder.addVertex(v);
         builder.addVertex(aggregationBarrierVertex);

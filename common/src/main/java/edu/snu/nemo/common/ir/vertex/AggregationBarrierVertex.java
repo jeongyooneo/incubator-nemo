@@ -28,14 +28,14 @@ import java.util.*;
  * @param <K> type of the key of metric data.
  * @param <V> type of the value of metric data.
  */
-public final class AggregationBarrierVertex<K, V> extends IRVertex {
+public class AggregationBarrierVertex<K, V> extends IRVertex {
   // Metric data used for dynamic optimization.
-  private Map<K, V> metricData;
-  private final List<String> blockIds;
+  protected Map<K, V> metricData;
+  protected List<String> blockIds;
 
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
-  private DAG<IRVertex, IREdge> dagSnapshot;
+  protected DAG<IRVertex, IREdge> dagSnapshot;
 
   /**
    * Constructor for dynamic optimization vertex.
@@ -103,6 +103,9 @@ public final class AggregationBarrierVertex<K, V> extends IRVertex {
    */
   public List<String> getBlockIds() {
     return blockIds;
+  }
+  
+  public void aggregateMetricData(final K key, final V value) {
   }
 
   @Override
