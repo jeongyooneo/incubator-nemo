@@ -150,14 +150,8 @@ public final class SchedulerRunner {
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-          final boolean isSkewed = hasSkewedData(task);
-          if (isSkewed) {
-            LOG.info("Skewed {} scheduled to {} {}",
-                task.getTaskId(), selectedExecutor.getNodeName());
-          } else {
-            LOG.info("{} scheduled to {} {}",
-                task.getTaskId(), selectedExecutor.getNodeName());
-          }
+          LOG.info("{} scheduled to {} {}", task.getTaskId(), selectedExecutor.getNodeName());
+
           // send the task
           selectedExecutor.onTaskScheduled(task);
           scheduledTasks.add(taskId);
