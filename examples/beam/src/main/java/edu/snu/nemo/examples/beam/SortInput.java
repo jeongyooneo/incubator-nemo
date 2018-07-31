@@ -85,8 +85,12 @@ public final class SortInput {
             String ret = "";
             String value = valueTokeys.getKey();
             List<String> keys = valueTokeys.getValue();
-            for (String key : keys) {
-              ret = ret + value + " " + key + "\n";
+            for (int i = 0; i < keys.size(); i++) {
+              if (i == keys.size() - 1) {
+                ret = ret + keys.get(i) + " " + value;
+              } else {
+                ret = ret + keys.get(i) + " " + value + "\n";
+              }
             }
             return ret;
           }
