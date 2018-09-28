@@ -114,7 +114,7 @@ public final class JobLauncher {
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
-    Thread.sleep(2000);
+    Thread.sleep(10000);
 
     // Start Driver and launch user program.
     try {
@@ -127,15 +127,15 @@ public final class JobLauncher {
       driverReadyLatch = new CountDownLatch(1);
       driverLauncher = DriverLauncher.getLauncher(deployModeConf);
 
-      Thread.sleep(2000);
+      Thread.sleep(10000);
 
       driverLauncher.submit(jobAndDriverConf, 500);
       // When the driver is up and the resource is ready, the DriverReady message is delivered.
 
       // Launch client main
-      Thread.sleep(2000);
+      Thread.sleep(10000);
       runUserProgramMain(builtJobConf);
-      Thread.sleep(2000);
+      Thread.sleep(10000);
 
       // Trigger driver shutdown afterwards
       driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
