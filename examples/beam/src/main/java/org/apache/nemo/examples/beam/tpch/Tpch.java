@@ -140,6 +140,7 @@ public final class Tpch {
     final String queryFilePath = args[0];
     final String inputDirectory = args[1];
     final String outputFilePath = args[2];
+    final long start = System.currentTimeMillis();
 
     LOG.info("{} / {} / {}", queryFilePath, inputDirectory, outputFilePath);
 
@@ -172,6 +173,7 @@ public final class Tpch {
 
     // Then run
     p.run();
+    LOG.info("****** JCT: {}", System.currentTimeMillis() - start);
   }
 
   private static String getQueryString(final String queryFilePath) {
