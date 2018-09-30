@@ -351,6 +351,7 @@ public final class TaskExecutor {
       // send aggregated dynamic optimization data to master
       final Object aggregatedDynOptData = outputCollector.iterateMain().iterator().next();
       sendDynOptData(aggregatedDynOptData);
+      LOG.info("{} ABV {}: sent dynoptdata", taskId, v.getId());
       // set the id of this vertex to mark the corresponding stage as put on hold
       setIRVertexPutOnHold(v);
     } else {

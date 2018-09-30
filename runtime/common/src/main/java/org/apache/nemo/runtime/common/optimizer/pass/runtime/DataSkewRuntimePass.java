@@ -104,7 +104,12 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<O
         .sorted(Comparator.reverseOrder())
         .collect(Collectors.toList());
     List<Long> skewedSizes = new ArrayList<>();
-    for (int i = 0; i < numSkewedKeys; i++) {
+    int keysToIdentify = numSkewedKeys;
+    if (numSkewedKeys < partitionSizeList.size()) {
+      keysToIdentify = partitionSizeList.size();
+    }
+
+    for (int i = 0; i < keysToIdentify; i++) {
       skewedSizes.add(sortedMetricData.get(i));
       LOG.info("Skewed size: {}", sortedMetricData.get(i));
     }
