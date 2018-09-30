@@ -105,7 +105,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<O
         .collect(Collectors.toList());
     List<Long> skewedSizes = new ArrayList<>();
     int keysToIdentify = numSkewedKeys;
-    if (numSkewedKeys < partitionSizeList.size()) {
+    if (numSkewedKeys > partitionSizeList.size()) {
       keysToIdentify = partitionSizeList.size();
     }
 
