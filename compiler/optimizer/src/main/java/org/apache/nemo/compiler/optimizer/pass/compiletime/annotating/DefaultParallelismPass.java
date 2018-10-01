@@ -90,7 +90,6 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           boolean isABV = vertex instanceof OperatorVertex
               && ((OperatorVertex) vertex).getTransform() instanceof AggregateMetricTransform;
           Integer parallelism = o2oParallelism;
-          LOG.info("{} is ABV: parallelism = 1", vertex.getId());
           if (!isABV) {
             final Integer shuffleParallelism = inEdges.stream()
               .filter(edge -> CommunicationPatternProperty.Value.Shuffle
