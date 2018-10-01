@@ -209,7 +209,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     return newEdge;
   }
   
-  class ReverseOrderComp implements Comparator<Map.Entry<Object, Long>> {
+  class ReverseOrderComp implements Comparator<Map.Entry<Object, Long>>, Serializable {
     @Override
     public int compare(Map.Entry<Object, Long> e1,
                        Map.Entry<Object, Long> e2) {
