@@ -177,7 +177,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
-    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
     newEdge.setProperty(KeyExtractorProperty.of(edge.getPropertyValue(KeyExtractorProperty.class).get()));
     newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
 
