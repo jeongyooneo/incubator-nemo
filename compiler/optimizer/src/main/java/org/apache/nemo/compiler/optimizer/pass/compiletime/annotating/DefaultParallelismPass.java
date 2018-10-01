@@ -88,7 +88,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
               .max().orElse(1);
 
           boolean isABV = vertex instanceof OperatorVertex
-              && ((OperatorVertex) vertex).getTransform() instanceof AggregateMetricTransform);
+              && ((OperatorVertex) vertex).getTransform() instanceof AggregateMetricTransform;
           Integer parallelism = o2oParallelism;
           LOG.info("{} is ABV: parallelism = 1", vertex.getId());
           if (!isABV) {
