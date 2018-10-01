@@ -19,6 +19,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.TreeMap;
 import java.util.function.BiFunction;
 
 /**
