@@ -132,8 +132,8 @@ public final class SkewReshapingPass extends ReshapingPass {
     final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
     // Define a custom data collector for skew handling.
     // Here, the collector gathers key frequency data used in shuffle data repartitioning.
-    final BiFunction<Object, TreeMap<Object, Long>, TreeMap<Object, Long>> dynOptDataCollector =
-      (BiFunction<Object, TreeMap<Object, Long>, TreeMap<Object, Long>> & Serializable)
+    final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataCollector =
+      (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
         (element, dynOptData) -> {
           Object key = keyExtractor.extractKey(element);
           if (dynOptData.containsKey(key)) {
@@ -146,30 +146,35 @@ public final class SkewReshapingPass extends ReshapingPass {
 
     // Define a custom transform closer for skew handling.
     // Here, we emit key to frequency data map type data when closing transform.
-    final BiFunction<TreeMap<Object, Long>, OutputCollector, TreeMap<Object, Long>> closer =
-      (BiFunction<TreeMap<Object, Long>, OutputCollector, TreeMap<Object, Long>> & Serializable)
+    final BiFunction<Map<Object, Long>, OutputCollector, Map<Object, Long>> closer =
+      (BiFunction<Map<Object, Long>, OutputCollector, Map<Object, Long>> & Serializable)
         (dynOptData, outputCollector)-> {
-          final int numDynOptData = dynOptData.size();
+          Comparator<Map.Entry<Object, Long>> comparator = Comparator.comparing(Map.Entry::getValue);
+          HashMap<Object, Long> sortedDynOptData = dynOptData.entrySet().stream()
+            .sorted(comparator.reversed())
+            .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue(),
+              (e1, e2) -> e2, LinkedHashMap::new));
+
+          final int numDynOptData = sortedDynOptData.size();
           int dynOptDataToSend = 10;
           if (numDynOptData < 10) {
             dynOptDataToSend = numDynOptData;
           }
           int cnt = 0;
-          for (Map.Entry<Object, Long> e : dynOptData.entrySet()) {
+          for (Map.Entry<Object, Long> e : sortedDynOptData.entrySet()) {
             if (dynOptDataToSend < cnt) {
               break;
             }
-            final Pair<Object, Object> pairData = Pair.of(e.getKey(), e.getValue());
+            final Pair<Object, Long> pairData = Pair.of(e.getKey(), e.getValue());
             outputCollector.emit(abv.getId(), pairData);
             LOG.info("MCV:({}) Sent {} {}", cnt, e.getKey(), e.getValue());
             cnt++;
           }
 
-          return dynOptData;
+          return sortedDynOptData;
         };
 
-    final MetricCollectTransform mct
-      = new MetricCollectTransform(new TreeMap<>(new ReverseOrderComp()), dynOptDataCollector, closer);
+    final MetricCollectTransform mct = new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, closer);
     return new OperatorVertex(mct);
   }
 
@@ -207,17 +212,5 @@ public final class SkewReshapingPass extends ReshapingPass {
     }
 
     return newEdge;
-  }
-  
-  class ReverseOrderComp implements Comparator<Map.Entry<Object, Long>>, Serializable {
-    @Override
-    public int compare(Map.Entry<Object, Long> e1,
-                       Map.Entry<Object, Long> e2) {
-      if (e1.getValue() > e2.getValue()) {
-        return -1;
-      } else {
-        return 1;
-      }
-    }
   }
 }
