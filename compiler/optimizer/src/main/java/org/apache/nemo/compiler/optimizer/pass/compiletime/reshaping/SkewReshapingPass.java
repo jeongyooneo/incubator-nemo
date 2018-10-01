@@ -35,11 +35,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 /**
  * Pass to reshape the IR DAG for skew handling.
@@ -134,8 +132,8 @@ public final class SkewReshapingPass extends ReshapingPass {
     final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
     // Define a custom data collector for skew handling.
     // Here, the collector gathers key frequency data used in shuffle data repartitioning.
-    final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
-      (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
+    final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataCollector =
+      (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
         (element, dynOptData) -> {
           Object key = keyExtractor.extractKey(element);
           if (dynOptData.containsKey(key)) {
@@ -148,14 +146,31 @@ public final class SkewReshapingPass extends ReshapingPass {
 
     // Define a custom transform closer for skew handling.
     // Here, we emit key to frequency data map type data when closing transform.
-    final BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> closer =
-      (BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> & Serializable)
+    final BiFunction<Map<Object, Long>, OutputCollector, Map<Object, Long>> closer =
+      (BiFunction<Map<Object, Long>, OutputCollector, Map<Object, Long>> & Serializable)
         (dynOptData, outputCollector)-> {
-          dynOptData.forEach((k, v) -> {
-            final Pair<Object, Object> pairData = Pair.of(k, v);
+      final Map<Object, Long> sortedDynOptData = new HashMap<>();
+      dynOptData.entrySet().stream()
+        .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+        .forEachOrdered(x -> sortedDynOptData.put(x.getKey(), x.getValue()));
+
+          final int numDynOptData = sortedDynOptData.size();
+          int dynOptDataToSend = 10;
+          if (numDynOptData < 10) {
+            dynOptDataToSend = numDynOptData;
+          }
+          int cnt = 0;
+          for (Map.Entry<Object, Long> e : sortedDynOptData.entrySet()) {
+            if (dynOptDataToSend < cnt) {
+              break;
+            }
+            final Pair<Object, Object> pairData = Pair.of(e.getKey(), e.getValue());
             outputCollector.emit(abv.getId(), pairData);
-          });
-          return dynOptData;
+            cnt++;
+            LOG.info("MCV: Sent {} {}", e.getKey(), e.getValue());
+          }
+
+          return sortedDynOptData;
         };
 
     final MetricCollectTransform mct
