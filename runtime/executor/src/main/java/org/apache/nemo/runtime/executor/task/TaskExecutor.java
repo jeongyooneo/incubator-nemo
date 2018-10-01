@@ -243,6 +243,9 @@ public final class TaskExecutor {
     } else if (irVertex instanceof OperatorVertex) {
       final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
+      if (((OperatorVertex) irVertex).getTransform() instanceof AggregateMetricTransform) {
+        LOG.info("{} ABV onData {}", irVertex.getId(), dataElement);
+      }
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
