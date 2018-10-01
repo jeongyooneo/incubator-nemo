@@ -264,6 +264,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
               + "Broadcast edge is not compatible with push" + e.getId());
         }));
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
+    /*
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
             .equals(e.getPropertyValue(MetricCollectionProperty.class)))
@@ -272,6 +273,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
           throw new CompileTimeOptimizationException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
         }));
+    */
   }
 
   /**
