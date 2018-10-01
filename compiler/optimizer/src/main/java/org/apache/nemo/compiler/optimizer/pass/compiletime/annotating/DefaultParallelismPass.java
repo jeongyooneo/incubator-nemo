@@ -19,10 +19,14 @@ import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -32,6 +36,7 @@ import java.util.List;
 @Annotates(ParallelismProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class DefaultParallelismPass extends AnnotatingPass {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultParallelismPass.class.getName());
   private final int desiredSourceParallelism;
   // we decrease the number of parallelism by this number on each shuffle boundary.
   private final int shuffleDecreaseFactor;
@@ -81,14 +86,21 @@ public final class DefaultParallelismPass extends AnnotatingPass {
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
               .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .max().orElse(1);
-          final Integer shuffleParallelism = inEdges.stream()
+
+          boolean isABV = vertex instanceof OperatorVertex
+              && ((OperatorVertex) vertex).getTransform() instanceof AggregateMetricTransform);
+          Integer parallelism = o2oParallelism;
+          LOG.info("{} is ABV: parallelism = 1", vertex.getId());
+          if (!isABV) {
+            final Integer shuffleParallelism = inEdges.stream()
               .filter(edge -> CommunicationPatternProperty.Value.Shuffle
-                  .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
+                .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
               .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .map(i -> i / shuffleDecreaseFactor)
               .max().orElse(1);
-          // We set the greater value as the parallelism.
-          final Integer parallelism = o2oParallelism > shuffleParallelism ? o2oParallelism : shuffleParallelism;
+            // We set the greater value as the parallelism.
+            parallelism = o2oParallelism > shuffleParallelism ? o2oParallelism : shuffleParallelism;
+          }
           vertex.setProperty(ParallelismProperty.of(parallelism));
           // synchronize one-to-one edges parallelism
           recursivelySynchronizeO2OParallelism(dag, vertex, parallelism);
