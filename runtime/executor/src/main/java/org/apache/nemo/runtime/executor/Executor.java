@@ -24,10 +24,7 @@ import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
@@ -40,6 +37,7 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
@@ -85,6 +83,8 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
+  private final BlockManagerWorker blockManagerWorker;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -92,7 +92,8 @@ public final class Executor {
                    final SerializerManager serializerManager,
                    final IntermediateDataIOFactory intermediateDataIOFactory,
                    final BroadcastManagerWorker broadcastManagerWorker,
-                   final MetricManagerWorker metricMessageSender) {
+                   final MetricManagerWorker metricMessageSender,
+                   final BlockManagerWorker blockManagerWorker) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
         .namingPattern("TaskExecutor thread-%d")
@@ -102,6 +103,7 @@ public final class Executor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
+    this.blockManagerWorker = blockManagerWorker;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -120,7 +122,13 @@ public final class Executor {
    * @param task to launch.
    */
   private void launchTask(final Task task) {
-    LOG.info("Launch task: {}", task.getTaskId());
+    if (task.getTaskOutgoingEdges().size() > 0
+      && task.getTaskOutgoingEdges().get(0)
+      .getPropertyValue(DataFlowProperty.class)
+      .orElseThrow(() -> new RuntimeException("no dataflow model!")).equals(DataFlowProperty.Value.Push)) {
+      blockManagerWorker.waitIfRemainingReadSizeIsLarge();
+    }
+    LOG.debug("Executor [{}] received Task [{}] to execute.", new Object[]{executorId, task.getTaskId()});
     try {
       final long deserializationStartTime = System.currentTimeMillis();
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =

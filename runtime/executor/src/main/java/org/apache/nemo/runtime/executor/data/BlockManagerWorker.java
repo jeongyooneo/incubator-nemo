@@ -50,6 +50,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +64,7 @@ import org.slf4j.LoggerFactory;
 public final class BlockManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerWorker.class.getName());
   private static final String REMOTE_FILE_STORE = "REMOTE_FILE_STORE";
+  private static final int DISCARD_THRESHOLD = 10;
 
   private final String executorId;
   private final SerializerManager serializerManager;
@@ -80,6 +84,8 @@ public final class BlockManagerWorker {
   private final ExecutorService backgroundExecutorService;
   private final Map<String, AtomicInteger> blockToRemainingRead;
   private final BlockTransferThrottler blockTransferThrottler;
+  private final Lock remainingReadSizeLock = new ReentrantLock();
+  private final Condition remainingReadSizeLessThan = remainingReadSizeLock.newCondition();
 
   /**
    * Constructor.
@@ -247,7 +253,13 @@ public final class BlockManagerWorker {
 
     switch (persistence) {
       case Discard:
-        blockToRemainingRead.put(block.getId(), new AtomicInteger(expectedReadTotal));
+        //blockToRemainingRead.put(block.getId(), new AtomicInteger(expectedReadTotal));
+        remainingReadSizeLock.lock();
+        try {
+          blockToRemainingRead.put(block.getId(), new AtomicInteger(expectedReadTotal));
+        } finally {
+          remainingReadSizeLock.unlock();
+        }
         break;
       case Keep:
         // Do nothing but just keep the data.
@@ -277,6 +289,20 @@ public final class BlockManagerWorker {
             .setType(ControlMessage.MessageType.BlockStateChanged)
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
             .build());
+  }
+
+  public void waitIfRemainingReadSizeIsLarge() {
+    remainingReadSizeLock.lock();
+    try {
+      while (blockToRemainingRead.size() >= DISCARD_THRESHOLD) {
+        LOG.info("@@@ wait until some discard!");
+        remainingReadSizeLessThan.await();
+      }
+    } catch (final InterruptedException e) {
+      throw new RuntimeException(e);
+    } finally {
+      remainingReadSizeLock.unlock();
+    }
   }
 
   /**
@@ -444,13 +470,31 @@ public final class BlockManagerWorker {
     if (remainingExpectedRead != null) {
       if (remainingExpectedRead.decrementAndGet() == 0) {
         // This block should be discarded.
-        blockToRemainingRead.remove(blockId);
+        remainingReadSizeLock.lock();
+        try {
+          blockToRemainingRead.remove(blockId);
+          backgroundExecutorService.submit(new Runnable() {
+            @Override
+            public void run() {
+              removeBlock(blockId, blockStore);
+              LOG.info("@@Discard!");
+            }
+          });
+          if (blockToRemainingRead.size() < DISCARD_THRESHOLD) {
+            remainingReadSizeLessThan.signalAll();
+            LOG.info("@@@ the # of remaining block to discard is less than threshold. signal!");
+          }
+        } finally {
+          remainingReadSizeLock.unlock();
+        }
+
+        /*blockToRemainingRead.remove(blockId);
         backgroundExecutorService.submit(new Runnable() {
           @Override
           public void run() {
             removeBlock(blockId, blockStore);
           }
-        });
+        });*/
       }
     } // If null, just keep the data in the store.
   }
