@@ -205,10 +205,14 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     private final Map<String, TmpIntegerValueState> idToValueState;
     private final Map<String, Integer> idToInteger;
-    private class TmpIntegerValueState implements ValueState<Integer> {
-      final String stateId;
 
-      public TmpIntegerValueState(final String stateId) {
+    /**
+     * Temporary integer value state class.
+     */
+    private class TmpIntegerValueState implements ValueState<Integer> {
+      private final String stateId;
+
+      TmpIntegerValueState(final String stateId) {
         this.stateId = stateId;
       }
 
