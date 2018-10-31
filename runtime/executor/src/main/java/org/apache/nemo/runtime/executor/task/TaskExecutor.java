@@ -298,6 +298,10 @@ public final class TaskExecutor {
       "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
     metricMessageSender.send("TaskMetric", taskId,
       "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
+    
+    LOG.info("TaskMetric: boundedSourceReadTime {}", boundedSourceReadTime);
+    LOG.info("TaskMetric: serializedReadBytes {}", serializedReadBytes);
+    LOG.info("TaskMetric: encodedReadBytes {}", encodedReadBytes);
 
     // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
@@ -647,5 +651,6 @@ public final class TaskExecutor {
     }
     metricMessageSender.send("TaskMetric", taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
+    LOG.info("TaskMetric: writtenBytes {}", totalWrittenBytes);
   }
 }
