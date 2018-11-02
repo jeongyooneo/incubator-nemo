@@ -13,24 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <template>
-  <el-container>
-    <el-header class="header-container">
-      <h2 class="header-title">
-        {{ title }}
-      </h2>
-    </el-header>
-    <el-container>
-      <el-main>
-        <el-row type="flex" justify="center">
-          <el-col :span="20">
-            <div class="main-container">
-              <nuxt/>
-            </div>
-          </el-col>
-        </el-row>
-      </el-main>
-    </el-container>
-  </el-container>
+  <div class="main-container">
+    <nuxt/>
+  </div>
+
+  <!--<el-container>-->
+    <!--<el-header class="header-container">-->
+      <!--<h2 class="header-title">-->
+        <!--{{ title }}-->
+      <!--</h2>-->
+    <!--</el-header>-->
+    <!--<el-container>-->
+      <!--<el-main>-->
+        <!--<el-row type="flex" justify="center">-->
+          <!--<el-col :span="20">-->
+            <!--<div class="main-container">-->
+              <!--<nuxt/>-->
+            <!--</div>-->
+          <!--</el-col>-->
+        <!--</el-row>-->
+      <!--</el-main>-->
+    <!--</el-container>-->
+  <!--</el-container>-->
 </template>
 
 <script>
@@ -41,14 +45,13 @@ export default {
     }
   },
 
-  beforeMount() {
-
-  },
-
   methods: {
 
   },
 
+  beforeMount() {
+
+  },
 }
 </script>
 
