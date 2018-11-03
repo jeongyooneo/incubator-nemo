@@ -292,7 +292,8 @@ public final class BlockManagerWorker {
     remainingReadSizeLock.lock();
     try {
       while (blockToRemainingRead.size() >= DISCARD_THRESHOLD) {
-        LOG.info("@@@ wait until some discard!");
+        LOG.info("@@@ Remaining blocks {}(THS {}): wait until some discard!",
+          blockToRemainingRead.size(), DISCARD_THRESHOLD);
         remainingReadSizeLessThan.await();
       }
     } catch (final InterruptedException e) {
@@ -474,7 +475,7 @@ public final class BlockManagerWorker {
             @Override
             public void run() {
               removeBlock(blockId, blockStore);
-              LOG.info("@@Discard!");
+              LOG.info("@@Discard! Remaining blocks {}(THS {})", blockToRemainingRead.size(), DISCARD_THRESHOLD);
             }
           });
           if (blockToRemainingRead.size() < DISCARD_THRESHOLD) {
@@ -484,14 +485,6 @@ public final class BlockManagerWorker {
         } finally {
           remainingReadSizeLock.unlock();
         }
-
-        /*blockToRemainingRead.remove(blockId);
-        backgroundExecutorService.submit(new Runnable() {
-          @Override
-          public void run() {
-            removeBlock(blockId, blockStore);
-          }
-        });*/
       }
     } // If null, just keep the data in the store.
   }
