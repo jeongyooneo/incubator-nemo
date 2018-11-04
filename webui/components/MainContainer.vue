@@ -16,7 +16,7 @@ limitations under the License.
   <el-container>
     <el-header>
       <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect">
-        <el-menu-item index="0"><a href="/">LOGO</a></el-menu-item>
+        <el-menu-item index="0" disabled><a href="/">LOGO</a></el-menu-item>
         <el-menu-item index="1">Jobs</el-menu-item>
         <el-menu-item index="2">Stages</el-menu-item>
         <el-menu-item index="3">Storage</el-menu-item>
@@ -29,7 +29,7 @@ limitations under the License.
     <el-main>
       <!--Jobs-->
       <div v-if="activeIndex === '1'">
-        <job-view/>
+        <jobs-view/>
       </div>
       <!--Stages-->
       <div v-else-if="activeIndex === '2'">
@@ -138,7 +138,7 @@ limitations under the License.
 
 <script>
 import Vue from 'vue';
-import JobView from '../components/JobView';
+import JobsView from './jobs/JobsView';
 import MetricTimeline from '../components/MetricTimeline';
 import DAG from '../components/DAG';
 import DetailTable from '../components/DetailTable';
@@ -153,7 +153,6 @@ export const METRIC_LIST = [
   'TaskMetric',
 ];
 
-const JOBS_TAB = '0';
 const TIMELINE_TAB = '1';
 const DAG_TAB = '2';
 
@@ -174,7 +173,7 @@ const LISTENING_EVENT_LIST = [
 
 export default {
   components: {
-    'job-view': JobView,
+    'jobs-view': JobsView,
     'metric-timeline': MetricTimeline,
     'dag': DAG,
     'detail-table': DetailTable,
