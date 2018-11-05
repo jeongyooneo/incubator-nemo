@@ -153,12 +153,12 @@ limitations under the License.
 
     <!--Selected Job-->
     <job-view/>
+    <!--<job-view :selectedJobId="selectedJobId"/>-->
   </el-card>
 </template>
 
 <script>
 import Vue from 'vue';
-import MetricTimeline from '../MetricTimeline';
 import JobView from './detail/JobView';
 import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
@@ -179,7 +179,7 @@ function _isDone(status) {
 
 export default {
   components: {
-    'metric-timeline': MetricTimeline,
+    JobView,
     'job-view': JobView,
   },
 
