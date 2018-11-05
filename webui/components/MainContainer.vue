@@ -47,13 +47,6 @@ limitations under the License.
       <div v-else-if="activeIndex === '5'">
         <executors-view/>
       </div>
-
-      <!--To be GONE-->
-      <!--<el-card>-->
-            <!--<task-statistics-->
-              <!--:selectedJobId="selectedJobId"-->
-              <!--:metricLookupMap="metricLookupMap"/>-->
-      <!--</el-card>-->
     </el-main>
   </el-container>
 </template>
@@ -65,7 +58,6 @@ import StagesView from './stages/StagesView';
 import StorageView from './storage/StorageView';
 import EnvironmentView from './environment/EnvironmentView';
 import ExecutorsView from './executors/ExecutorsView';
-import TaskStatistics from '../components/TaskStatistics';
 import { DataSet } from 'vue2vis';
 import { STATE } from '../assets/constants';
 
@@ -81,7 +73,6 @@ export default {
     'storage-view': StorageView,
     'environment-view': EnvironmentView,
     'executors-view': ExecutorsView,
-    'task-statistics': TaskStatistics,
   },
 
   data() {
