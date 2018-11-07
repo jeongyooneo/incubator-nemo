@@ -650,6 +650,9 @@ public final class TaskExecutor {
     }
     metricMessageSender.send("TaskMetric", taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
-    LOG.info("TaskMetric-{} totalWrittenBytes {}", taskId, totalWrittenBytes);
+    
+    if (totalWrittenBytes > 0) {
+      LOG.info("TaskMetric-{} totalWrittenBytes {}", taskId, totalWrittenBytes);
+    }
   }
 }

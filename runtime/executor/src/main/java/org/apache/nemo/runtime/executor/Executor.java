@@ -114,9 +114,13 @@ public final class Executor {
    */
   private void launchTask(final Task task) {
     if (task.getTaskOutgoingEdges().size() > 0
-      && task.getTaskOutgoingEdges().get(0)
+      && (task.getTaskOutgoingEdges().get(0)
       .getPropertyValue(DataFlowProperty.class)
-      .orElseThrow(() -> new RuntimeException("no dataflow model!")).equals(DataFlowProperty.Value.Push)) {
+      .orElseThrow(() -> new RuntimeException("no dataflow model!")).equals(DataFlowProperty.Value.Push)
+    || (task.getTaskOutgoingEdges().get(0).getPropertyValue(CommunicationPatternProperty.class)
+    .orElseThrow(() -> new RuntimeException("exception")).equals(CommunicationPatternProperty.Value.OneToOne)
+      && task.getTaskOutgoingEdges().get(0).getPropertyValue(DataFlowProperty.class)
+      .orElseThrow(() -> new RuntimeException("exception")).equals(DataFlowProperty.Value.Pull)))) {
       blockManagerWorker.waitIfRemainingReadSizeIsLarge();
     }
     LOG.debug("Executor [{}] received Task [{}] to execute.", new Object[]{executorId, task.getTaskId()});
