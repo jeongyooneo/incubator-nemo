@@ -368,6 +368,7 @@ export default {
           init: true,
           states: job.dagStageState,
         });
+        this.$eventBus.$emit('rerender-dag');
       }
     },
 

@@ -41,8 +41,8 @@ const PAN_MARGIN = 20;
 const INTER_STAGE_EDGE_STROKE_WIDTH = 3;
 const INTRA_STAGE_EDGE_STROKE_WIDTH = 3;
 const ARROW_SIDE = 3;
-const VERTEX_FONT_SIZE = 15;
-const STAGE_FONT_SIZE = 20;
+const VERTEX_FONT_SIZE = 12;
+const STAGE_FONT_SIZE = 15;
 
 const GRAPH_MARGIN = 15;
 
@@ -483,9 +483,13 @@ export default {
      * Rearrange font size according to the canvas zoom ratio.
      */
     rearrangeFontSize(ratio) {
+      // Disable for now.
       this.stageTextObjects.forEach(text => {
-        text.set('fontSize', STAGE_FONT_SIZE * ratio);
+        // text.set('fontSize', STAGE_FONT_SIZE * ratio);
       });
+      this.vertexTextObjects.forEach(text => {
+        // text.set('fontSize', VERTEX_FONT_SIZE * ratio);
+      })
     },
 
     /**
@@ -582,8 +586,9 @@ export default {
             lockMovementY: true,
           });
 
-          let top = vertex.label.length > 10 ?
-            vertex.y + (vertex.height * 5 / 12) : vertex.y + (vertex.height * 7 / 24);
+          // let top = vertex.label.length > 10 ?
+          //   vertex.y + (vertex.height * 5 / 12) : vertex.y + (vertex.height * 7 / 24);
+          let top = vertex.y + (vertex.height * 7 / 24);
           let vertexLabelObj = new fabric.Text(vertex.label, {
             left: vertex.x,
             top: top,
