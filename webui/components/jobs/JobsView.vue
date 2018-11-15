@@ -177,7 +177,7 @@ limitations under the License.
     <br><br><br>
 
     <!--Selected Job-->
-    <job-view :selected-job-status="selectedJobStatus"/>
+    <job-view :selected-job-status="selectedJobStatus" :selected-job-metric-data-set="selectedJobMetricDataSet"/>
     <!--<job-view :selectedJobId="selectedJobId"/>-->
   </el-card>
 </template>
@@ -207,6 +207,7 @@ export default {
       jobs: {},
 
       selectedJobId: '',
+      selectedJobMetricDataSet: [],
 
       // ui-specific
       addJobDialogVisible: false,
@@ -352,11 +353,11 @@ export default {
 
       this.selectedJobId = jobId;
       const job = this.jobs[jobId];
+      this.selectedJobMetricDataSet = job.metricDataSet;
       this.$eventBus.$emit('job-id-select', {
         jobId,
         jobFrom: this._getFrom(jobId),
         metricLookupMap: job.metricLookupMap,
-        metricDataSet: job.metricDataSet,
       });
 
       await this.$nextTick();
