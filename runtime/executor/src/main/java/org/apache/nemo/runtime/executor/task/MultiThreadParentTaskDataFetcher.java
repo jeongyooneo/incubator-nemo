@@ -189,4 +189,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       throw new IllegalStateException("Should not be called");
     }
   }
+
+  boolean isStarted() throws IOException {
+    return true;
+  }
 }

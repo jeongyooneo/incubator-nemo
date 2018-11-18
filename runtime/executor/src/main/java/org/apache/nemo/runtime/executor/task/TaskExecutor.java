@@ -458,7 +458,7 @@ public final class TaskExecutor {
           return false;
         }
       }
-
+      
       final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
       final long currentTime = System.currentTimeMillis();
 
