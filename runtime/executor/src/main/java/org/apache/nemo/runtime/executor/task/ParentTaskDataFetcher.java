@@ -60,6 +60,15 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.iteratorQueue = new LinkedBlockingQueue<>();
   }
 
+  boolean isStarted() throws IOException {
+    if (!firstFetch) {
+      return true;
+    } else {
+      fetchDataLazily();
+      return !iteratorQueue.isEmpty();
+    }
+  }
+
   @Override
   Object fetchDataElement() throws IOException {
     try {

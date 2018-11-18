@@ -53,6 +53,8 @@ abstract class DataFetcher implements AutoCloseable {
     return outputCollector;
   }
 
+  abstract boolean isStarted() throws IOException;
+
   IRVertex getDataSource() {
     return dataSource;
   }

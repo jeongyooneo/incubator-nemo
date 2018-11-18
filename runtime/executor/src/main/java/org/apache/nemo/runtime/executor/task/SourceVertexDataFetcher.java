@@ -101,6 +101,10 @@ class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
+  boolean isStarted() throws IOException {
+    return true;
+  }
+
   private Object retrieveElement() throws NoSuchElementException, IOException {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
