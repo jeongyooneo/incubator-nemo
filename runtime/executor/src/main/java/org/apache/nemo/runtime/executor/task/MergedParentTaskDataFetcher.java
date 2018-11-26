@@ -44,14 +44,17 @@ class MergedParentTaskDataFetcher extends DataFetcher {
   private int currentIteratorIndex;
   private long serBytes = 0;
   private long encodedBytes = 0;
+  private final String taskId;
 
   MergedParentTaskDataFetcher(final List<InputReader> readersForParentTask,
-                              final VertexHarness child) {
+                              final VertexHarness child,
+                              final String taskId) {
     super(child);
     this.readersForParentTask = readersForParentTask;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
+    this.taskId = taskId;
   }
 
   @Override
@@ -111,6 +114,8 @@ class MergedParentTaskDataFetcher extends DataFetcher {
       this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
       this.currentIteratorIndex++;
     }
+    
+    LOG.info("{} currentIteratorIndex {}", taskId, currentIteratorIndex);
   }
 
   private void fetchDataLazily() throws IOException {
@@ -130,7 +135,10 @@ class MergedParentTaskDataFetcher extends DataFetcher {
           throw new RuntimeException(e); // this should not happen
         }
       }));
+      LOG.info("{} {} expectedNumOfIterators {}", taskId, inputReader.getSrcIrVertex().getId(), expectedNumOfIterators);
     }
+    
+    
   }
 
   final long getSerializedBytes() {

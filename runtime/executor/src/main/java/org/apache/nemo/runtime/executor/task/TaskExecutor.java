@@ -217,7 +217,8 @@ public final class TaskExecutor {
       final List<InputReader> nonBroadcastReaders =
         getParentTaskReaders(taskIndex, nonBroadcastInEdges, dataTransferFactory);
       if (!nonBroadcastReaders.isEmpty()) {
-        nonBroadcastDataFetcherList.add(new MergedParentTaskDataFetcher(nonBroadcastReaders, vertexHarness));
+        LOG.info("# InputReaders {}", nonBroadcastReaders.size());
+        nonBroadcastDataFetcherList.add(new MergedParentTaskDataFetcher(nonBroadcastReaders, vertexHarness, taskId));
       }
       /*nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
         new ParentTaskDataFetcher(parentTaskReader, vertexHarness)));*/
@@ -655,5 +656,6 @@ public final class TaskExecutor {
     }
     metricMessageSender.send("TaskMetric", taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
+    LOG.info("TaskMetric: {}  totalWrittenBytes {}", taskId, totalWrittenBytes);
   }
 }
