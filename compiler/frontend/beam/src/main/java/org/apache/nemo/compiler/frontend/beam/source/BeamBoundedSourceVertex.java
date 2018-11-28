@@ -1,21 +1,25 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 
@@ -39,17 +43,18 @@ import org.slf4j.LoggerFactory;
 public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue<O>> {
   private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
   private BoundedSource<O> source;
-  private final String sourceDescription;
+  private final DisplayData displayData;
 
   /**
    * Constructor of BeamBoundedSourceVertex.
    *
    * @param source BoundedSource to read from.
+   * @param displayData data to display.
    */
-  public BeamBoundedSourceVertex(final BoundedSource<O> source) {
+  public BeamBoundedSourceVertex(final BoundedSource<O> source, final DisplayData displayData) {
     super();
     this.source = source;
-    this.sourceDescription = source.toString();
+    this.displayData = displayData;
   }
 
   /**
@@ -60,12 +65,17 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   public BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
     super(that);
     this.source = that.source;
-    this.sourceDescription = that.source.toString();
+    this.displayData = that.displayData;
   }
 
   @Override
   public BeamBoundedSourceVertex getClone() {
     return new BeamBoundedSourceVertex(this);
+  }
+
+  @Override
+  public boolean isBounded() {
+    return true;
   }
 
   @Override
@@ -86,7 +96,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   @Override
   public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = getIRVertexPropertiesAsJsonNode();
-    node.put("source", sourceDescription);
+    node.put("source", displayData.toString());
     return node;
   }
 
@@ -96,6 +106,8 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
    */
   private static final class BoundedSourceReadable<T> implements Readable<WindowedValue<T>> {
     private final BoundedSource<T> boundedSource;
+    private boolean finished = false;
+    private BoundedSource.BoundedReader<T> reader;
 
     /**
      * Constructor of the BoundedSourceReadable.
@@ -106,32 +118,41 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
     }
 
     @Override
-    public Iterable<WindowedValue<T>> read() throws IOException {
-      boolean started = false;
-      boolean windowed = false;
-
-      final ArrayList<WindowedValue<T>> elements = new ArrayList<>();
-      try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
-        for (boolean available = reader.start(); available; available = reader.advance()) {
-          final T elem = reader.getCurrent();
-
-          // Check whether the element is windowed or not
-          // We only have to check the first element.
-          if (!started) {
-            started = true;
-            if (elem instanceof WindowedValue) {
-              windowed = true;
-            }
-          }
-
-          if (!windowed) {
-            elements.add(WindowedValue.valueInGlobalWindow(reader.getCurrent()));
-          } else {
-            elements.add((WindowedValue<T>) elem);
-          }
-        }
+    public void prepare() {
+      try {
+        reader = boundedSource.createReader(null);
+        finished = !reader.start();
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
       }
-      return elements;
+    }
+
+    @Override
+    public WindowedValue<T> readCurrent() {
+      if (finished) {
+        throw new IllegalStateException("Bounded reader read all elements");
+      }
+
+      final T elem = reader.getCurrent();
+
+      try {
+        finished = !reader.advance();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      return WindowedValue.valueInGlobalWindow(elem);
+    }
+
+    @Override
+    public long readWatermark() {
+      throw new UnsupportedOperationException("No watermark");
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
     }
 
     @Override
@@ -145,6 +166,12 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
       } else {
         throw new UnsupportedOperationException();
       }
+    }
+
+    @Override
+    public void close() throws IOException {
+      finished = true;
+      reader.close();
     }
   }
 }
