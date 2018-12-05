@@ -22,3 +22,10 @@ dbgen/*.tbl
 dbgen/*.o
 dbgen/dbgen
 dbgen/qgen
+
+# IntelliJ IDEA
+.idea/*
+*.iml
+*.xml
+TIMES.txt
+project/

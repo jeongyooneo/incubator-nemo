@@ -44,9 +44,9 @@ object TpchQuery {
 
   def executeQueries(sc: SparkContext, schemaProvider: TpchSchemaProvider, queryNum: Int): ListBuffer[(String, Float)] = {
 
+    // val OUTPUT_DIR: String = "file://" + new File(".").getAbsolutePath() + "/dbgen/output"
     // if set write results to hdfs, if null write to stdout
-    // val OUTPUT_DIR: String = "/tpch"
-    val OUTPUT_DIR: String = "file://" + new File(".").getAbsolutePath() + "/dbgen/output"
+    val OUTPUT_DIR: String = "hdfs://jeongyoon:8020/tpch-3tb/out"
 
     val results = new ListBuffer[(String, Float)]
 
@@ -57,10 +57,10 @@ object TpchQuery {
       toNum = queryNum;
     }
 
-    for (queryNo <- fromNum to toNum) {
+    //for (queryNo <- fromNum to toNum) {
       val t0 = System.nanoTime()
 
-      val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
+      val query = Class.forName(f"main.scala.Q12").newInstance.asInstanceOf[TpchQuery]
 
       outputDF(query.execute(sc, schemaProvider), OUTPUT_DIR, query.getName())
 
@@ -69,7 +69,7 @@ object TpchQuery {
       val elapsed = (t1 - t0) / 1000000000.0f // second
       results += new Tuple2(query.getName(), elapsed)
 
-    }
+    //}
 
     return results
   }
@@ -84,10 +84,12 @@ object TpchQuery {
     val sc = new SparkContext(conf)
 
     // read files from local FS
-    val INPUT_DIR = "file://" + new File(".").getAbsolutePath() + "/dbgen"
+    //val INPUT_DIR = "file://" + new File(".").getAbsolutePath() + "/dbgen"
 
     // read from hdfs
     // val INPUT_DIR: String = "/dbgen"
+    // Check core-site.xml element fs.defaultFS for 8020
+    val INPUT_DIR = "hdfs://jeongyoon:8020/tpch-3tb"
 
     val schemaProvider = new TpchSchemaProvider(sc, INPUT_DIR)
 
