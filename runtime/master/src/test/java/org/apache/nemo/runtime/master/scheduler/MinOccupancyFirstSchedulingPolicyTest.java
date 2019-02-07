@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.scheduler.policy.MinOccupancyFirstSchedulingPolicy;
+import org.apache.nemo.runtime.master.scheduler.policy.SchedulingPolicy;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;

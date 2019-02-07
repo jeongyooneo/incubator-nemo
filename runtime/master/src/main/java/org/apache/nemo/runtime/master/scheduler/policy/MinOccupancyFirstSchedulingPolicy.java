@@ -16,20 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master.scheduler;
+package org.apache.nemo.runtime.master.scheduler.policy;
 
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
+import java.util.*;
 
 /**
- * Functions to test schedulability with a pair of an executor and a task.
+ * This policy chooses a set of Executors, on which have minimum running Tasks.
  */
-@DriverSide
 @ThreadSafe
-@FunctionalInterface
-public interface SchedulingConstraint {
-  boolean testSchedulability(final ExecutorRepresenter executor, final Task task);
+@DriverSide
+public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
+
+  @Inject
+  private MinOccupancyFirstSchedulingPolicy() {
+  }
+
+  @Override
+  public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
+    final OptionalInt minOccupancy =
+        executors.stream()
+        .map(executor -> executor.getNumOfRunningTasks())
+        .mapToInt(i -> i).min();
+
+    if (!minOccupancy.isPresent()) {
+      throw new RuntimeException("Cannot find min occupancy");
+    }
+
+    return executors.stream()
+        .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("No such executor"));
+  }
 }

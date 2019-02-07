@@ -16,30 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master.scheduler;
+package org.apache.nemo.runtime.master.scheduler.constraint;
 
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import javax.inject.Inject;
 
 /**
- * This policy find executors which has corresponding container type.
+ * This policy finds executor that has free slot for a Task.
  */
-@AssociatedProperty(ResourcePriorityProperty.class)
-public final class ContainerTypeAwareSchedulingConstraint implements SchedulingConstraint {
+@AssociatedProperty(ResourceSlotProperty.class)
+public final class FreeSlotSchedulingConstraint implements SchedulingConstraint {
 
   @Inject
-  private ContainerTypeAwareSchedulingConstraint() {
+  private FreeSlotSchedulingConstraint() {
   }
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    final String executorPlacementPropertyValue = task.getPropertyValue(ResourcePriorityProperty.class)
-        .orElse(ResourcePriorityProperty.NONE);
-    return executorPlacementPropertyValue.equals(ResourcePriorityProperty.NONE) ? true
-        : executor.getContainerType().equals(executorPlacementPropertyValue);
+    if (!task.getPropertyValue(ResourceSlotProperty.class).orElse(false)) {
+      return true;
+    }
+
+    return executor.getNumOfComplyingRunningTasks() < executor.getExecutorCapacity();
   }
 }

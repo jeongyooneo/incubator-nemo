@@ -78,6 +78,9 @@ public final class TaskExecutor {
   private long boundedSourceReadTime = 0;
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
+  private long totalReadTimeMillis = 0;
+  private long totalWriteTimeMillis = 0;
+  private long totalWrittenBytes = 0;
   private final MetricMessageSender metricMessageSender;
 
   // Dynamic optimization
@@ -260,7 +263,7 @@ public final class TaskExecutor {
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
         .map(incomingEdge ->
           Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge)))
+            .createReader(incomingEdge.getDstIRVertex(), taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge)))
         .forEach(pair -> {
           if (irVertex instanceof OperatorVertex) {
             final StageEdge edge = pair.left();
@@ -344,11 +347,24 @@ public final class TaskExecutor {
       "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
     metricMessageSender.send("TaskMetric", taskId,
       "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
+  
+    LOG.info("TaskMetric {} boundedSourceReadTime(ms) {}", taskId, boundedSourceReadTime);
+    LOG.info("TaskMetric {} serializedReadBytes {}", taskId, serializedReadBytes);
+    LOG.info("TaskMetric {} encodedReadBytes {}", taskId, encodedReadBytes);
+    LOG.info("TaskMetric {} totalReadTimeMillis {}", taskId, totalReadTimeMillis);
+    // LOG.info("TaskMetric {} intermediateDataReadThp(bits/ns)", taskId, (serializedReadBytes * 8) / totalReadTimeMillis);
 
     // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       finalizeVertex(vertexHarness);
     }
+  
+    // TODO #236: Decouple metric collection and sending logic
+    metricMessageSender.send("TaskMetric", taskId,
+      "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
+    LOG.info("TaskMetric {} totalWrittenBytes {}", taskId, totalWrittenBytes);
+    LOG.info("TaskMetric {} totalWriteTimeMillis {}", taskId, totalWriteTimeMillis);
+    //LOG.info("TaskMetric {} intermediateDataWriteThp(bits/ns) {}", taskId, (totalWrittenBytes * 8) / totalWriteTimeMillis);
 
     if (idOfVertexPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
@@ -409,7 +425,7 @@ public final class TaskExecutor {
   /**
    * This retrieves data from data fetchers and process them.
    * It maintains two lists:
-   *  -- availableFetchers: maintain data fetchers that currently have data elements to retreive
+   *  -- availableFetchers: maintain data fetchers that currently have data elements to retrieve.
    *  -- pendingFetchers: maintain data fetchers that currently do not have available elements.
    *     This can become available in the future, and therefore we check the pending fetchers every pollingInterval.
    *
@@ -431,6 +447,8 @@ public final class TaskExecutor {
 
     // Previous polling time
     long prevPollingTime = System.currentTimeMillis();
+    
+    long start = 0;
 
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
@@ -438,6 +456,9 @@ public final class TaskExecutor {
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
       while (availableIterator.hasNext()) {
+        
+        start = System.currentTimeMillis();
+        
         final DataFetcher dataFetcher = availableIterator.next();
         try {
           final Object element = dataFetcher.fetchDataElement();
@@ -457,17 +478,21 @@ public final class TaskExecutor {
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
           return false;
         }
+        
+        totalReadTimeMillis += System.currentTimeMillis() - start;
       }
 
       final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
       final long currentTime = System.currentTimeMillis();
-
 
       if (isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
         // We check pending data every polling interval
         prevPollingTime = currentTime;
 
         while (pendingIterator.hasNext()) {
+          
+          start = System.currentTimeMillis();
+          
           final DataFetcher dataFetcher = pendingIterator.next();
           try {
             final Object element = dataFetcher.fetchDataElement();
@@ -489,6 +514,8 @@ public final class TaskExecutor {
             LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
             return false;
           }
+  
+          totalReadTimeMillis += System.currentTimeMillis() - start;
         }
       }
 
@@ -531,7 +558,7 @@ public final class TaskExecutor {
       .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(edge ->
         Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(),
-          intermediateDataIOFactory.createWriter(taskId, edge)))
+          intermediateDataIOFactory.createWriter(taskId, RuntimeIdManager.getIndexFromTaskId(taskId), edge)))
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());
         map.get(pair.left()).add(pair.right());
@@ -602,7 +629,7 @@ public final class TaskExecutor {
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
       .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(outEdgeForThisVertex -> intermediateDataIOFactory
-        .createWriter(taskId, outEdgeForThisVertex))
+        .createWriter(taskId, RuntimeIdManager.getIndexFromTaskId(taskId), outEdgeForThisVertex))
       .collect(Collectors.toList());
   }
 
@@ -626,7 +653,7 @@ public final class TaskExecutor {
     return inEdgesFromParentTasks
       .stream()
       .map(inEdgeForThisVertex -> intermediateDataIOFactory
-        .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
+        .createReader(inEdgeForThisVertex.getDstIRVertex(), taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
       .collect(Collectors.toList());
   }
 
@@ -690,14 +717,13 @@ public final class TaskExecutor {
         writtenBytes.ifPresent(writtenBytesList::add);
       });
     });
+    
+    if (vertexHarness.getOutputCollector() instanceof OperatorVertexOutputCollector) {
+      totalWriteTimeMillis += ((OperatorVertexOutputCollector) vertexHarness.getOutputCollector()).getTotalWriteTimeLocal();
+    }
 
-    long totalWrittenBytes = 0;
     for (final Long writtenBytes : writtenBytesList) {
       totalWrittenBytes += writtenBytes;
     }
-
-    // TODO #236: Decouple metric collection and sending logic
-    metricMessageSender.send("TaskMetric", taskId,
-      "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
 }

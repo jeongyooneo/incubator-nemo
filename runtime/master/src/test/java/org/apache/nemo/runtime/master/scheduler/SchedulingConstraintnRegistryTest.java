@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
+import org.apache.nemo.runtime.master.scheduler.constraint.*;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;

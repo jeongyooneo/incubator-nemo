@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master.scheduler;
+package org.apache.nemo.runtime.master.scheduler.constraint;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;

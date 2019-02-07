@@ -36,6 +36,7 @@ import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandle
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
+import org.apache.nemo.runtime.master.scheduler.constraint.SchedulingConstraintRegistry;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;

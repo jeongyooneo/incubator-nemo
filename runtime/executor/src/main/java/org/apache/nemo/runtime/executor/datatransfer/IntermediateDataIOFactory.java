@@ -50,12 +50,13 @@ public final class IntermediateDataIOFactory {
    * @return the {@link OutputWriter} created.
    */
   public OutputWriter createWriter(final String srcTaskId,
+                                   final int srcTaskIdx,
                                    final RuntimeEdge<?> runtimeEdge) {
     if (isPipe(runtimeEdge)) {
       return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker);
     } else {
       final StageEdge stageEdge = (StageEdge) runtimeEdge;
-      return new BlockOutputWriter(srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
+      return new BlockOutputWriter(srcTaskId, srcTaskIdx, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
     }
   }
 
@@ -67,13 +68,14 @@ public final class IntermediateDataIOFactory {
    * @param runtimeEdge that connects the tasks belonging to srcIRVertex to dstTask.
    * @return the {@link InputReader} created.
    */
-  public InputReader createReader(final int dstTaskIdx,
+  public InputReader createReader(final IRVertex dstIRVertex,
+                                  final int dstTaskIdx,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
     if (isPipe(runtimeEdge)) {
       return new PipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker);
     } else {
-      return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
+      return new BlockInputReader(dstIRVertex, dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }
   }
 

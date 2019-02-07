@@ -23,6 +23,7 @@ import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.ConditionalLargeShufflePolicy;
+import org.apache.nemo.compiler.optimizer.policy.StaticDisaggPolicy;
 import org.apache.nemo.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -71,7 +72,16 @@ public final class WordCountITCase {
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
-
+  
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  public void testStaticDisagg() throws Exception {
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_staticDisagg")
+      .addOptimizationPolicy(StaticDisaggPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+  
   @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder

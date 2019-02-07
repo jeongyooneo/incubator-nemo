@@ -23,6 +23,9 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang3.mutable.MutableObject;
+import org.apache.nemo.runtime.master.scheduler.constraint.SchedulingConstraint;
+import org.apache.nemo.runtime.master.scheduler.constraint.SchedulingConstraintRegistry;
+import org.apache.nemo.runtime.master.scheduler.policy.SchedulingPolicy;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -132,7 +135,8 @@ final class TaskDispatcher {
           // update metadata first
           planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
-          LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+          LOG.info("{} scheduled to {} {}",
+            task.getTaskId(), selectedExecutor.getExecutorId(), selectedExecutor.getContainerType());
           // send the task
           selectedExecutor.onTaskScheduled(task);
         } else {

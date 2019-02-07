@@ -24,8 +24,8 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.commons.math3.optim.BaseOptimizer;
 import org.apache.commons.math3.optim.PointValuePair;
@@ -64,7 +64,6 @@ public final class ResourceSitePass extends AnnotatingPass {
   private static final HashMap<String, Integer> EMPTY_MAP = new HashMap<>();
 
   private static String bandwidthSpecificationString = "";
-
 
   /**
    * Default constructor.
@@ -116,6 +115,7 @@ public final class ResourceSitePass extends AnnotatingPass {
       final Collection<IREdge> inEdges = dag.getIncomingEdgesOf(irVertex);
       final int parallelism = irVertex.getPropertyValue(ParallelismProperty.class)
           .orElseThrow(() -> new RuntimeException("Parallelism property required"));
+      LOG.info("Parallelism of {}: {}", irVertex.getId(), parallelism);
       if (inEdges.size() == 0) {
         // This vertex is root vertex.
         // Fall back to setting even distribution
@@ -132,8 +132,8 @@ public final class ResourceSitePass extends AnnotatingPass {
           final Map<String, Integer> parentShares = parentVertex.getPropertyValue(ResourceSiteProperty.class).get();
           final int parentParallelism = parentVertex.getPropertyValue(ParallelismProperty.class)
               .orElseThrow(() -> new RuntimeException("Parallelism property required"));
-          final Map<String, Integer> shares = parentShares.isEmpty() ? getEvenShares(bandwidthSpecification.getNodes(),
-              parentParallelism) : parentShares;
+          final Map<String, Integer> shares = parentShares.isEmpty() ?
+            getEvenShares(bandwidthSpecification.getNodes(), parentParallelism) : parentShares;
           for (final Map.Entry<String, Integer> element : shares.entrySet()) {
             parentLocationShares.putIfAbsent(element.getKey(), 0);
             parentLocationShares.put(element.getKey(),

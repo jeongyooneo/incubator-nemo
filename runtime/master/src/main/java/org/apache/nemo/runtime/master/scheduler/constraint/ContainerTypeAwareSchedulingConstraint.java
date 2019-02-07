@@ -16,41 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master.scheduler;
+package org.apache.nemo.runtime.master.scheduler.constraint;
 
+import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.*;
 
 /**
- * This policy chooses a set of Executors, on which have minimum running Tasks.
+ * This policy find executors which has corresponding container type.
  */
-@ThreadSafe
-@DriverSide
-public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
+@AssociatedProperty(ResourcePriorityProperty.class)
+public final class ContainerTypeAwareSchedulingConstraint implements SchedulingConstraint {
 
   @Inject
-  private MinOccupancyFirstSchedulingPolicy() {
+  private ContainerTypeAwareSchedulingConstraint() {
   }
 
   @Override
-  public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
-    final OptionalInt minOccupancy =
-        executors.stream()
-        .map(executor -> executor.getNumOfRunningTasks())
-        .mapToInt(i -> i).min();
-
-    if (!minOccupancy.isPresent()) {
-      throw new RuntimeException("Cannot find min occupancy");
-    }
-
-    return executors.stream()
-        .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("No such executor"));
+  public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
+    final String executorPlacementPropertyValue = task.getPropertyValue(ResourcePriorityProperty.class)
+        .orElse(ResourcePriorityProperty.NONE);
+    return executorPlacementPropertyValue.equals(ResourcePriorityProperty.NONE) ? true
+        : executor.getContainerType().equals(executorPlacementPropertyValue);
   }
 }

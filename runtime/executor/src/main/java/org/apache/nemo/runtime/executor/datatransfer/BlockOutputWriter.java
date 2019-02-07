@@ -21,9 +21,11 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.StaticDisaggProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.common.partitioner.*;
@@ -40,10 +42,11 @@ public final class BlockOutputWriter implements OutputWriter {
   private static final Logger LOG = LoggerFactory.getLogger(BlockOutputWriter.class.getName());
 
   private final RuntimeEdge<?> runtimeEdge;
+  private final IRVertex srcIrVertex;
   private final IRVertex dstIrVertex;
   private final Partitioner partitioner;
 
-  private final DataStoreProperty.Value blockStoreValue;
+  private DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
   private final Block blockToWrite;
   private final boolean nonDummyBlock;
@@ -59,16 +62,43 @@ public final class BlockOutputWriter implements OutputWriter {
    * @param blockManagerWorker  the {@link BlockManagerWorker}.
    */
   BlockOutputWriter(final String srcTaskId,
+                    final int srcTaskIdx,
                     final IRVertex dstIrVertex,
                     final RuntimeEdge<?> runtimeEdge,
                     final BlockManagerWorker blockManagerWorker) {
     this.runtimeEdge = runtimeEdge;
+    this.srcIrVertex = ((StageEdge) runtimeEdge).getSrcIRVertex();
     this.dstIrVertex = dstIrVertex;
 
     this.partitioner = Partitioner.getPartitioner(runtimeEdge);
     this.blockManagerWorker = blockManagerWorker;
-    this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class)
-      .orElseThrow(() -> new RuntimeException("No data store property on the edge"));
+  
+    // Follow container type(memory or flash-optimized instance)
+    // in case of disagg setting for DataStoreProperty value.
+    if (srcIrVertex.getPropertyValue(StaticDisaggProperty.class).isPresent()
+      && !srcIrVertex.getPropertyValue(StaticDisaggProperty.class).get().isEmpty()) {
+      final Map<String, Integer> m = srcIrVertex.getPropertyValue(StaticDisaggProperty.class).get();
+      int taskIndex = srcTaskIdx;
+      for (Map.Entry<String, Integer> entry : m.entrySet()) {
+        if (taskIndex < entry.getValue()) {
+          final String containerType = entry.getKey();
+          if (containerType.equals("DRAM")) {
+            LOG.info("{} {} index {} {} assigned MemoryStore", containerType, srcTaskId, srcTaskIdx, entry.getValue());
+            this.blockStoreValue = DataStoreProperty.Value.MemoryStore;
+            break;
+          } else {
+            LOG.info("{} {} index {} {} assigned LocalFileStore", containerType, srcTaskId, srcTaskIdx, entry.getValue());
+            this.blockStoreValue = DataStoreProperty.Value.LocalFileStore;
+            break;
+          }
+        }
+      }
+    } else {
+      LOG.info("{} doesn't have StaticDisaggProp, falling back to {}",
+        srcTaskId, runtimeEdge.getPropertyValue(DataStoreProperty.class).get());
+      this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).get();
+    }
+    
     blockToWrite = blockManagerWorker.createBlock(
         RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
@@ -103,7 +133,7 @@ public final class BlockOutputWriter implements OutputWriter {
   @Override
   public void close() {
     // Commit block.
-    final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
+    final DataPersistenceProperty.Value persistence = runtimeEdge
       .getPropertyValue(DataPersistenceProperty.class).get();
 
     final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();

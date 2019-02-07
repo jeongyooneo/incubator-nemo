@@ -174,6 +174,7 @@ public final class BlockManagerWorker {
           return responseFromMasterFuture;
         });
     blockLocationFuture.whenComplete((message, throwable) -> {
+      LOG.info("BlockLocationFuture completed {} {}", blockIdWildcard, runtimeEdgeId);
       pendingBlockLocationRequest.remove(blockIdWildcard);
     });
 
@@ -196,8 +197,10 @@ public final class BlockManagerWorker {
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
+        LOG.info("{} resides in this evaluator({})", blockId, executorId);
         return getDataFromLocalBlock(blockId, blockStore, keyRange);
       } else {
+        LOG.info("{} resides other than this evaluator", blockId);
         final ControlMessage.BlockTransferContextDescriptor descriptor =
           ControlMessage.BlockTransferContextDescriptor.newBuilder()
             .setBlockId(blockId)
@@ -216,8 +219,10 @@ public final class BlockManagerWorker {
             // Something wrong with the connection. Notify blockTransferThrottler immediately.
             blockTransferThrottler.onTransferFinished(runtimeEdgeId);
           } else {
+            LOG.info("{} connection is okay", runtimeEdgeId);
             // Connection is okay. Notify blockTransferThrottler when the actual transfer is done, or fails.
             connectionContext.getCompletedFuture().whenComplete((transferContext, transferThrowable) -> {
+              LOG.info("{} notifying actual transfer done", runtimeEdgeId);
               blockTransferThrottler.onTransferFinished(runtimeEdgeId);
             });
           }
@@ -243,7 +248,7 @@ public final class BlockManagerWorker {
                          final int expectedReadTotal,
                          final DataPersistenceProperty.Value persistence) {
     final String blockId = block.getId();
-    LOG.info("CommitBlock: {}", blockId);
+    LOG.info("CommitBlock: {} {}", blockId, blockStore);
 
     switch (persistence) {
       case Discard:
@@ -321,7 +326,7 @@ public final class BlockManagerWorker {
   /**
    * Respond to a block request by another executor.
    * <p>
-   * This method is executed by {org.apache.nemo.runtime.executor.data.blocktransfer.BlockTransport} thread. \
+   * This method is executed by {org.apache.nemo.runtime.executor.data.blocktransfer.BlockTransport} thread.
    * Never execute a blocking call in this method!
    *
    * @param outputContext {@link ByteOutputContext}
@@ -338,6 +343,7 @@ public final class BlockManagerWorker {
       @Override
       public void run() {
         try {
+          LOG.info("Responding to pull read of {} {}", blockId, blockStore);
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
@@ -358,7 +364,6 @@ public final class BlockManagerWorker {
             }
             handleDataPersistence(blockStore, blockId);
             outputContext.close();
-
           } else {
             // We don't have the block here...
             throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));

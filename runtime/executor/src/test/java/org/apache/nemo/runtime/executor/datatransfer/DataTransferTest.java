@@ -340,7 +340,8 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dummyEdge);
+      final OutputWriter writer =
+        transferFactory.createWriter(srcTaskId, RuntimeIdManager.getIndexFromTaskId(srcTaskId), dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -350,7 +351,7 @@ public final class DataTransferTest {
     final List<List> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+          new BlockInputReader(dstVertex, dstTaskIndex, srcVertex, dummyEdge, receiver);
 
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
@@ -430,12 +431,14 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dummyEdge);
+      final OutputWriter writer =
+        transferFactory.createWriter(srcTaskId, RuntimeIdManager.getIndexFromTaskId(srcTaskId), dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = transferFactory.createWriter(srcTaskId, dummyEdge2);
+      final OutputWriter writer2 =
+        transferFactory.createWriter(srcTaskId, RuntimeIdManager.getIndexFromTaskId(srcTaskId), dummyEdge);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });
@@ -445,9 +448,9 @@ public final class DataTransferTest {
     final List<List> dataReadList2 = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+          new BlockInputReader(dstVertex, dstTaskIndex, srcVertex, dummyEdge, receiver);
       final InputReader reader2 =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
+          new BlockInputReader(dstVertex, dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 

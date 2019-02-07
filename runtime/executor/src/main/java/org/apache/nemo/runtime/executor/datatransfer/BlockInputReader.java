@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -27,11 +28,15 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.StaticDisaggProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -40,8 +45,8 @@ import java.util.concurrent.CompletableFuture;
  * Represents the input data transfer to a task.
  */
 public final class BlockInputReader implements InputReader {
+  private static final Logger LOG = LoggerFactory.getLogger(BlockInputReader.class.getName());
   private final BlockManagerWorker blockManagerWorker;
-
   private final int dstTaskIndex;
 
   /**
@@ -49,8 +54,10 @@ public final class BlockInputReader implements InputReader {
    */
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
+  private DataStoreProperty.Value blockStoreValue;
 
-  BlockInputReader(final int dstTaskIndex,
+  BlockInputReader(final IRVertex dstVertex,
+                   final int dstTaskIndex,
                    final IRVertex srcVertex,
                    final RuntimeEdge runtimeEdge,
                    final BlockManagerWorker blockManagerWorker) {
@@ -58,6 +65,38 @@ public final class BlockInputReader implements InputReader {
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
+    
+    // Follow container type(memory or flash-optimized instance)
+    // in case of disagg setting for DataStoreProperty value.
+    // srcVertex: vertex of the parent task that produced the input
+    // dstVertex: vertex of this task that reads the input
+    if (srcVertex.getPropertyValue(StaticDisaggProperty.class).isPresent()
+      && !srcVertex.getPropertyValue(StaticDisaggProperty.class).get().isEmpty()) {
+      final Map<String, Integer> m = srcVertex.getPropertyValue(StaticDisaggProperty.class).get();
+      int taskIndex = dstTaskIndex;
+      for (Map.Entry<String, Integer> entry : m.entrySet()) {
+        if (taskIndex < entry.getValue()) {
+          final String containerType = entry.getKey();
+          if (containerType.equals("DRAM")) {
+            LOG.info("{} {} index {} {} assigned MemoryStore",
+              containerType,
+              srcVertex.getId(), dstTaskIndex, entry.getValue());
+            this.blockStoreValue = DataStoreProperty.Value.MemoryStore;
+            break;
+          } else {
+            LOG.info("{} {} index {} {} assigned LocalFileStore",
+              containerType,
+              srcVertex.getId(), dstTaskIndex, entry.getValue());
+            this.blockStoreValue = DataStoreProperty.Value.LocalFileStore;
+            break;
+          }
+        }
+      }
+    } else {
+      LOG.info("{} doesn't have StaticDisaggProp, falling back to {}",
+        srcVertex.getId(), runtimeEdge.getPropertyValue(DataStoreProperty.class).get());
+      this.blockStoreValue = (DataStoreProperty.Value) runtimeEdge.getPropertyValue(DataStoreProperty.class).get();
+    }
   }
 
   @Override
@@ -100,21 +139,34 @@ public final class BlockInputReader implements InputReader {
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all());
+    return blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), blockStoreValue, HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = InputReader.getSourceParallelism(this);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-
+    
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
+  
+      DataStoreProperty.Value blockStoreValueForTask = DataStoreProperty.Value.LocalFileStore;
+      final Map<String, Integer> m = srcVertex.getPropertyValue(StaticDisaggProperty.class).get();
+      for (Map.Entry<String, Integer> entry : m.entrySet()) {
+        if (srcTaskIdx < entry.getValue()) {
+          final String containerType = entry.getKey();
+          if (containerType.equals("DRAM")) {
+            blockStoreValueForTask = DataStoreProperty.Value.MemoryStore;
+            break;
+          } else {
+            break;
+          }
+        }
+      }
+  
+      LOG.info("Reading block {} {} broadcast", blockIdWildcard, blockStoreValueForTask);
+  
       futures.add(blockManagerWorker.readBlock(
-        blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all()));
+        blockIdWildcard, runtimeEdge.getId(), blockStoreValueForTask, HashRange.all()));
     }
 
     return futures;
@@ -127,9 +179,6 @@ public final class BlockInputReader implements InputReader {
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof StageEdge);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
     final KeyRange hashRangeToRead = ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
     if (hashRangeToRead == null) {
       throw new BlockFetchException(
@@ -140,8 +189,26 @@ public final class BlockInputReader implements InputReader {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
+      
+      DataStoreProperty.Value blockStoreValueForTask = DataStoreProperty.Value.LocalFileStore;
+      final Map<String, Integer> m = srcVertex.getPropertyValue(StaticDisaggProperty.class).get();
+      for (Map.Entry<String, Integer> entry : m.entrySet()) {
+        if (srcTaskIdx < entry.getValue()) {
+          final String containerType = entry.getKey();
+          if (containerType.equals("DRAM")) {
+            blockStoreValueForTask = DataStoreProperty.Value.MemoryStore;
+            break;
+          } else {
+            break;
+          }
+        }
+      }
+  
+      LOG.info("Reading block {} {}, {}-{}", blockIdWildcard, blockStoreValueForTask,
+        hashRangeToRead.rangeBeginInclusive(), hashRangeToRead.rangeEndExclusive());
+  
       futures.add(
-        blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), hashRangeToRead));
+        blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), blockStoreValueForTask, hashRangeToRead));
     }
 
     return futures;

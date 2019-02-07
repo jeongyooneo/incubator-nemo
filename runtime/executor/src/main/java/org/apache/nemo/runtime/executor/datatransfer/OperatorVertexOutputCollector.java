@@ -45,6 +45,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
+  
+  private long totalWriteTimeLocal;
 
   /**
    * Constructor of the output collector.
@@ -65,6 +67,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
+    this.totalWriteTimeLocal = 0;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -72,7 +75,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   }
 
   private void emit(final OutputWriter writer, final O output) {
+    long start = System.currentTimeMillis();
+    
     writer.write(output);
+    
+    totalWriteTimeLocal += System.currentTimeMillis() - start;
   }
 
   @Override
@@ -128,5 +135,9 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
         externalVertex.writeWatermark(watermark);
       }
     }
+  }
+  
+  public long getTotalWriteTimeLocal() {
+    return totalWriteTimeLocal;
   }
 }

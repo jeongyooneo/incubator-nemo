@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master.scheduler;
+package org.apache.nemo.runtime.master.scheduler.constraint;
 
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -36,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @DriverSide
 @ThreadSafe
 public final class SchedulingConstraintRegistry {
+  private static final Logger LOG = LoggerFactory.getLogger(SchedulingConstraintRegistry.class.getName());
+  
   private final Map<Type, SchedulingConstraint> typeToSchedulingConstraintMap = new ConcurrentHashMap<>();
 
   @Inject
@@ -67,6 +71,8 @@ public final class SchedulingConstraintRegistry {
       throw new RuntimeException(String.format("Multiple SchedulingConstraint for VertexExecutionProperty %s:"
           + "%s, %s", property, typeToSchedulingConstraintMap.get(property), policy));
     }
+    
+    LOG.info("Registered SchedulingConstraint associated w/ {}", property.getSimpleName());
   }
 
   /**
