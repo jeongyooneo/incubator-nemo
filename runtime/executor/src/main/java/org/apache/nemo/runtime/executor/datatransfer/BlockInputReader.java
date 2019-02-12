@@ -149,24 +149,26 @@ public final class BlockInputReader implements InputReader {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
   
-      DataStoreProperty.Value blockStoreValueForTask = DataStoreProperty.Value.LocalFileStore;
-      final Map<String, Integer> m = srcVertex.getPropertyValue(StaticDisaggProperty.class).get();
-      for (Map.Entry<String, Integer> entry : m.entrySet()) {
-        if (srcTaskIdx < entry.getValue()) {
-          final String containerType = entry.getKey();
-          if (containerType.equals("DRAM")) {
-            blockStoreValueForTask = DataStoreProperty.Value.MemoryStore;
-            break;
-          } else {
-            break;
+      if (srcVertex.getPropertyValue(StaticDisaggProperty.class).isPresent()) {
+        blockStoreValue = DataStoreProperty.Value.LocalFileStore;
+        final Map<String, Integer> m = srcVertex.getPropertyValue(StaticDisaggProperty.class).get();
+        for (Map.Entry<String, Integer> entry : m.entrySet()) {
+          if (srcTaskIdx < entry.getValue()) {
+            final String containerType = entry.getKey();
+            if (containerType.equals("DRAM")) {
+              blockStoreValue = DataStoreProperty.Value.MemoryStore;
+              break;
+            } else {
+              break;
+            }
           }
         }
       }
   
-      LOG.info("Reading block {} {} broadcast", blockIdWildcard, blockStoreValueForTask);
+      LOG.info("Reading block {} {} broadcast", blockIdWildcard, blockStoreValue);
   
       futures.add(blockManagerWorker.readBlock(
-        blockIdWildcard, runtimeEdge.getId(), blockStoreValueForTask, HashRange.all()));
+        blockIdWildcard, runtimeEdge.getId(), blockStoreValue, HashRange.all()));
     }
 
     return futures;
@@ -190,25 +192,27 @@ public final class BlockInputReader implements InputReader {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
       
-      DataStoreProperty.Value blockStoreValueForTask = DataStoreProperty.Value.LocalFileStore;
-      final Map<String, Integer> m = srcVertex.getPropertyValue(StaticDisaggProperty.class).get();
-      for (Map.Entry<String, Integer> entry : m.entrySet()) {
-        if (srcTaskIdx < entry.getValue()) {
-          final String containerType = entry.getKey();
-          if (containerType.equals("DRAM")) {
-            blockStoreValueForTask = DataStoreProperty.Value.MemoryStore;
-            break;
-          } else {
-            break;
+      if (srcVertex.getPropertyValue(StaticDisaggProperty.class).isPresent()) {
+        blockStoreValue = DataStoreProperty.Value.LocalFileStore;
+        final Map<String, Integer> m = srcVertex.getPropertyValue(StaticDisaggProperty.class).get();
+        for (Map.Entry<String, Integer> entry : m.entrySet()) {
+          if (srcTaskIdx < entry.getValue()) {
+            final String containerType = entry.getKey();
+            if (containerType.equals("DRAM")) {
+              blockStoreValue = DataStoreProperty.Value.MemoryStore;
+              break;
+            } else {
+              break;
+            }
           }
         }
       }
   
-      LOG.info("Reading block {} {}, {}-{}", blockIdWildcard, blockStoreValueForTask,
+      LOG.info("Reading block {} {}, {}-{}", blockIdWildcard, blockStoreValue,
         hashRangeToRead.rangeBeginInclusive(), hashRangeToRead.rangeEndExclusive());
   
       futures.add(
-        blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), blockStoreValueForTask, hashRangeToRead));
+        blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), blockStoreValue, hashRangeToRead));
     }
 
     return futures;
