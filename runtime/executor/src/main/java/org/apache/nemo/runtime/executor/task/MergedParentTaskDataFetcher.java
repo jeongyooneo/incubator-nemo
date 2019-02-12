@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -29,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -36,30 +36,33 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Fetches data from parent tasks.
  */
 @NotThreadSafe
-class ParentTaskDataFetcher extends DataFetcher {
-  private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
-
-  private final InputReader readerForParentTask;
+class MergedParentTaskDataFetcher extends DataFetcher {
+  private static final Logger LOG = LoggerFactory.getLogger(MergedParentTaskDataFetcher.class);
+  
+  private final List<InputReader> readersForParentTask;
   private final LinkedBlockingQueue iteratorQueue;
-
+  
   // Non-finals (lazy fetching)
   private boolean firstFetch;
-  private int expectedNumOfIterators;
+  private int expectedNumOfIterators = 0;
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
   private long serBytes = 0;
   private long encodedBytes = 0;
-
-  ParentTaskDataFetcher(final IRVertex dataSource,
-                        final InputReader readerForParentTask,
-                        final OutputCollector outputCollector) {
+  private final String taskId;
+  
+  MergedParentTaskDataFetcher(final List<InputReader> readersForParentTask,
+                              final String taskId,
+                              final IRVertex dataSource,
+                              final OutputCollector outputCollector) {
     super(dataSource, outputCollector);
-    this.readerForParentTask = readerForParentTask;
+    this.readersForParentTask = readersForParentTask;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
+    this.taskId = taskId;
   }
-
+  
   @Override
   Object fetchDataElement() throws IOException {
     try {
@@ -68,13 +71,13 @@ class ParentTaskDataFetcher extends DataFetcher {
         advanceIterator();
         firstFetch = false;
       }
-
+      
       while (true) {
         // This iterator has the element
         if (this.currentIterator.hasNext()) {
           return this.currentIterator.next();
         }
-
+        
         // This iterator does not have the element
         if (currentIteratorIndex < expectedNumOfIterators) {
           // Next iterator has the element
@@ -85,7 +88,6 @@ class ParentTaskDataFetcher extends DataFetcher {
           // We've consumed all the iterators
           break;
         }
-
       }
     } catch (final Throwable e) {
       // Any failure is caught and thrown as an IOException, so that the task is retried.
@@ -95,10 +97,11 @@ class ParentTaskDataFetcher extends DataFetcher {
       // "throw Exception" that the TaskExecutor thread can catch and handle.
       throw new IOException(e);
     }
-
-    return Finishmark.getInstance();
+    
+    // We throw the exception here, outside of the above try-catch region
+    throw new NoSuchElementException();
   }
-
+  
   private void advanceIterator() throws IOException {
     // Take from iteratorQueue
     final Object iteratorOrThrowable;
@@ -108,7 +111,7 @@ class ParentTaskDataFetcher extends DataFetcher {
       Thread.currentThread().interrupt();
       throw new IOException(e);
     }
-
+    
     // Handle iteratorOrThrowable
     if (iteratorOrThrowable instanceof Throwable) {
       throw new IOException((Throwable) iteratorOrThrowable);
@@ -117,36 +120,42 @@ class ParentTaskDataFetcher extends DataFetcher {
       this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
       this.currentIteratorIndex++;
     }
+    
+    LOG.info("{} currentIteratorIndex {}", taskId, currentIteratorIndex);
   }
-
+  
   private void fetchDataLazily() throws IOException {
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readerForParentTask.read();
-    this.expectedNumOfIterators = futures.size();
-    LOG.info("Reading from {} expectedNumIter {}",
-      readerForParentTask.getSrcIrVertex().getId(), expectedNumOfIterators);
-
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      try {
-        if (exception != null) {
-          iteratorQueue.put(exception);
-        } else {
-          iteratorQueue.put(iterator);
+    for (final InputReader inputReader : readersForParentTask) {
+      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
+      this.expectedNumOfIterators += futures.size();
+      
+      futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
+        try {
+          if (exception != null) {
+            iteratorQueue.put(exception);
+          } else {
+            iteratorQueue.put(iterator);
+          }
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException(e); // this should not happen
         }
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e); // this should not happen
-      }
-    }));
+      }));
+      LOG.info("{} input src {} expectedNumOfIterators {}",
+        taskId, inputReader.getSrcIrVertex().getId(), expectedNumOfIterators);
+    }
+    
+    
   }
-
+  
   final long getSerializedBytes() {
     return serBytes;
   }
-
+  
   final long getEncodedBytes() {
     return encodedBytes;
   }
-
+  
   private void countBytes(final DataUtil.IteratorWithNumBytes iterator) {
     try {
       serBytes += iterator.getNumSerializedBytes();
@@ -163,9 +172,9 @@ class ParentTaskDataFetcher extends DataFetcher {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
   }
-
+  
   @Override
   public void close() throws Exception {
-
+  
   }
 }

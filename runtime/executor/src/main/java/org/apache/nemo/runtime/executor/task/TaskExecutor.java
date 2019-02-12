@@ -456,7 +456,6 @@ public final class TaskExecutor {
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
       while (availableIterator.hasNext()) {
-        
         start = System.currentTimeMillis();
         
         final DataFetcher dataFetcher = availableIterator.next();
@@ -490,7 +489,6 @@ public final class TaskExecutor {
         prevPollingTime = currentTime;
 
         while (pendingIterator.hasNext()) {
-          
           start = System.currentTimeMillis();
           
           final DataFetcher dataFetcher = pendingIterator.next();
