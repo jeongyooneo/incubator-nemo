@@ -24,7 +24,6 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * Interface for remote block stores (e.g., GlusterFS, ...).
  */
 
-@DefaultImplementation(CrailFileStore.class)
-//@DefaultImplementation(GlusterFileStore.class)
+@DefaultImplementation(GlusterFileStore.class)
 public interface RemoteFileStore extends BlockStore {
 }

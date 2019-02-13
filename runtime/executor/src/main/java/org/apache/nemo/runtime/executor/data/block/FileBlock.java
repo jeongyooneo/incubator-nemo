@@ -19,12 +19,10 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.crail.*;
-import org.apache.crail.conf.CrailConfiguration;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.runtime.executor.data.*;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.Partition;

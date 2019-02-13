@@ -50,6 +50,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   private CrailConfiguration conf = null;
   private CrailStore fs = null;
   //CrailFile file = null;
+  private static final String CRAIL_VOLUME_DIR = "/Users/jyeo/crail_volume_dir";
 
   /**
    * Constructor.
@@ -59,11 +60,10 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
    * @param serializerManager the serializer manager.
    */
   @Inject
-  private CrailFileStore(@Parameter(JobConf.CrailVolumeDirectory.class) final String volumeDirectory,
-                         @Parameter(JobConf.JobId.class) final String jobId,
+  private CrailFileStore(@Parameter(JobConf.JobId.class) final String jobId,
                          final SerializerManager serializerManager) throws Exception {
     super(serializerManager);
-    this.fileDirectory =volumeDirectory + "/" + jobId;
+    this.fileDirectory = CRAIL_VOLUME_DIR + "/" + jobId;
     new File(fileDirectory).mkdirs();
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
@@ -107,7 +107,6 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
    */
 
   @Override
-
   public Optional<Block> readBlock(final String blockId) throws BlockFetchException {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     if (!new File(filePath).isFile()) {

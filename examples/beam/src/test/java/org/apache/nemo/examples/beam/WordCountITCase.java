@@ -27,12 +27,15 @@ import org.apache.nemo.compiler.optimizer.policy.CrailPolicy;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.compiler.optimizer.policy.DisaggregationPolicy;
 import org.apache.nemo.examples.beam.policy.*;
+import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Test WordCount program with JobLauncher.
@@ -40,6 +43,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class WordCountITCase {
+  private static final Logger LOG = LoggerFactory.getLogger(WordCountITCase.class.getName());
+  
   private static ArgBuilder builder;
 
   private static final String inputFileName = "inputs/test_input_wordcount";
@@ -156,7 +161,7 @@ public final class WordCountITCase {
   public void testCrailPolicy() throws Exception{
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WordCountITCase.class.getSimpleName() + " CrailPolicy")
+      .addJobId(WordCountITCase.class.getSimpleName() + "_CrailPolicy")
       .addMaxTaskAttempt(Integer.MAX_VALUE)
       .addOptimizationPolicy(CrailPolicy.class.getCanonicalName())
       .build());

@@ -298,7 +298,8 @@ public final class BlockManagerWorker {
               .setBlockId(blockId)
               .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
 
-      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore) || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
+      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)
+        || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
         blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
       } else {
         blockStateChangedMsgBuilder.setLocation(executorId);
