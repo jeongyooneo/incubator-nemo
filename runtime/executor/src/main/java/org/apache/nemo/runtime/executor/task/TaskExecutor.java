@@ -344,7 +344,11 @@ public final class TaskExecutor {
       "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
     metricMessageSender.send("TaskMetric", taskId,
       "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
-
+  
+    LOG.info("TaskMetric {} boundedSourceReadTime(ms) {}", taskId, boundedSourceReadTime);
+    LOG.info("TaskMetric {} serializedReadBytes {}", taskId, serializedReadBytes);
+    LOG.info("TaskMetric {} encodedReadBytes {}", taskId, encodedReadBytes);
+    
     // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       finalizeVertex(vertexHarness);
@@ -699,5 +703,6 @@ public final class TaskExecutor {
     // TODO #236: Decouple metric collection and sending logic
     metricMessageSender.send("TaskMetric", taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
+    LOG.info("TaskMetric {} totalWrittenBytes {}", taskId, totalWrittenBytes);
   }
 }
