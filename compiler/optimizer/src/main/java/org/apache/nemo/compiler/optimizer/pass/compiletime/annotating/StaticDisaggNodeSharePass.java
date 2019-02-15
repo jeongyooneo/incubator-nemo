@@ -39,7 +39,7 @@ import java.util.*;
 public final class StaticDisaggNodeSharePass extends AnnotatingPass {
   private static final Logger LOG = LoggerFactory.getLogger(StaticDisaggNodeSharePass.class.getName());
   private static final HashMap<String, Integer> EMPTY_MAP = new HashMap<>();
-  
+  private static double dramToFlashRatio;
   /**
    * Default constructor.
    */
@@ -47,7 +47,8 @@ public final class StaticDisaggNodeSharePass extends AnnotatingPass {
   
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    assignNodeShares(dag, 0.5);
+    dramToFlashRatio = 0.0;
+    assignNodeShares(dag, dramToFlashRatio);
     return dag;
   }
   
@@ -64,8 +65,8 @@ public final class StaticDisaggNodeSharePass extends AnnotatingPass {
     //final int flashTasksPerNode = flashTasks / flashNodes;
     //final int flashTasksPerNodeRemainder = flashTasks % flashNodes;
     
-    LOG.info("parallelism {} dramTasks {} flashTasks {}",
-      parallelism, dramTasks, flashTasks);
+    LOG.info("DRAM to Flash ratio: {} - parallelism {} dramTasks {} flashTasks {}",
+      dramToFlashRatio, parallelism, dramTasks, flashTasks);
   
     shares.put("DRAM", dramTasks);
     shares.put("FLASH", parallelism);

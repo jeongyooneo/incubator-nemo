@@ -140,9 +140,11 @@ public final class BlockOutputWriter implements OutputWriter {
     // Return the total size of the committed block.
     if (partitionSizeMap.isPresent()) {
       long blockSizeTotal = 0;
-      for (final long partitionSize : partitionSizeMap.get().values()) {
-        blockSizeTotal += partitionSize;
-      }
+      for (final Map.Entry<Integer, Long> partitionIdToSize : partitionSizeMap.get().entrySet()) {
+        LOG.info("{} partition {} size {}",
+          runtimeEdge.getId(), partitionIdToSize.getKey(), partitionIdToSize.getValue());
+        blockSizeTotal += partitionIdToSize.getValue();
+      }      
       writtenBytes = blockSizeTotal;
     } else {
       writtenBytes = -1; // no written bytes info.
