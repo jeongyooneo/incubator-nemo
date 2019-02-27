@@ -217,6 +217,7 @@ public final class DataUtil {
     private volatile DecoderFactory.Decoder<T> decoder = null;
     private volatile long numSerializedBytes = 0;
     private volatile long numEncodedBytes = 0;
+    private volatile long deserTimeMillis = 0;
 
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
@@ -239,6 +240,7 @@ public final class DataUtil {
         return false;
       }
       while (true) {
+        long start = System.currentTimeMillis();
         try {
           if (decoder == null) {
             if (inputStreams.hasNext()) {
@@ -263,6 +265,8 @@ public final class DataUtil {
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
           numEncodedBytes += encodedCountingStream.getCount();
+          long deserTime = System.currentTimeMillis() - start;
+          deserTimeMillis += deserTime;
           serializedCountingStream = null;
           encodedCountingStream = null;
           decoder = null;
@@ -296,6 +300,10 @@ public final class DataUtil {
         throw new IllegalStateException("Iteration not completed.");
       }
       return numEncodedBytes;
+    }
+
+    public long getDeserialiationTime() {
+      return deserTimeMillis;
     }
   }
 
@@ -385,7 +393,8 @@ public final class DataUtil {
      */
     static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator,
                                           final long numSerializedBytes,
-                                          final long numEncodedBytes) {
+                                          final long numEncodedBytes,
+                                          final long deserTimeMillis) {
       return new IteratorWithNumBytes<E>() {
         @Override
         public long getNumSerializedBytes() {
@@ -396,7 +405,7 @@ public final class DataUtil {
         public long getNumEncodedBytes() {
           return numEncodedBytes;
         }
-
+  
         @Override
         public boolean hasNext() {
           return innerIterator.hasNext();
@@ -406,6 +415,8 @@ public final class DataUtil {
         public E next() {
           return innerIterator.next();
         }
+  
+        public long getDeserialiationTime() { return deserTimeMillis; }
       };
     }
 

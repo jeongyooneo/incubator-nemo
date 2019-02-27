@@ -208,7 +208,7 @@ public final class BlockInputReader implements InputReader {
         }
       }
   
-      LOG.info("Reading block {} {}, {}-{}", blockIdWildcard, blockStoreValue,
+      LOG.info("Reading block {} {}, range {}-{}", blockIdWildcard, blockStoreValue,
         hashRangeToRead.rangeBeginInclusive(), hashRangeToRead.rangeEndExclusive());
   
       futures.add(

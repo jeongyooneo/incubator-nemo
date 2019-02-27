@@ -174,7 +174,6 @@ public final class BlockManagerWorker {
           return responseFromMasterFuture;
         });
     blockLocationFuture.whenComplete((message, throwable) -> {
-      LOG.info("BlockLocationFuture completed {} {}", blockIdWildcard, runtimeEdgeId);
       pendingBlockLocationRequest.remove(blockIdWildcard);
     });
 
@@ -197,10 +196,8 @@ public final class BlockManagerWorker {
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
-        LOG.info("{} resides in this evaluator({})", blockId, executorId);
         return getDataFromLocalBlock(blockId, blockStore, keyRange);
       } else {
-        LOG.info("{} resides other than this evaluator", blockId);
         final ControlMessage.BlockTransferContextDescriptor descriptor =
           ControlMessage.BlockTransferContextDescriptor.newBuilder()
             .setBlockId(blockId)
@@ -219,10 +216,8 @@ public final class BlockManagerWorker {
             // Something wrong with the connection. Notify blockTransferThrottler immediately.
             blockTransferThrottler.onTransferFinished(runtimeEdgeId);
           } else {
-            LOG.info("{} connection is okay", runtimeEdgeId);
             // Connection is okay. Notify blockTransferThrottler when the actual transfer is done, or fails.
             connectionContext.getCompletedFuture().whenComplete((transferContext, transferThrowable) -> {
-              LOG.info("{} notifying actual transfer done", runtimeEdgeId);
               blockTransferThrottler.onTransferFinished(runtimeEdgeId);
             });
           }
@@ -343,7 +338,6 @@ public final class BlockManagerWorker {
       @Override
       public void run() {
         try {
-          LOG.info("Responding to pull read of {} {}", blockId, blockStore);
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)

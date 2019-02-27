@@ -49,6 +49,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private int currentIteratorIndex;
   private long serBytes = 0;
   private long encodedBytes = 0;
+  private long deserTime = 0;
 
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader readerForParentTask,
@@ -122,7 +123,6 @@ class ParentTaskDataFetcher extends DataFetcher {
   private void fetchDataLazily() throws IOException {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readerForParentTask.read();
     this.expectedNumOfIterators = futures.size();
-    LOG.info("Reading from {} expectedNumIter {}",
       readerForParentTask.getSrcIrVertex().getId(), expectedNumOfIterators);
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
